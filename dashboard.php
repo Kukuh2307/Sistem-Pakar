@@ -211,7 +211,7 @@ $gejala_options = $stmt->fetchAll();
                 <form method="POST" class="space-y-4" id="diagnosisForm">
                     <input type="hidden" name="action" value="diagnosa">
                     
-                    <div class="grid grid-cols-1 gap-4">
+                    <div class="grid grid-cols-3 gap-4">
                         <?php if (!empty($gejala_options)): ?>
                             <?php foreach ($gejala_options as $gejala): ?>
                                 <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
@@ -408,9 +408,39 @@ $gejala_options = $stmt->fetchAll();
             }, 10000);
         });
         
-        // Initial count update
-        updateSelectedCount();
-    });
-    </script>
+// Initial count update
+updateSelectedCount();
+});
+
+// Auto hide notification after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const notification = document.querySelector('.fade-in');
+    if (notification && notification.textContent.includes('Diagnosa berhasil')) {
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.className = 'absolute top-2 right-2 text-xl font-bold hover:opacity-75';
+        closeBtn.onclick = function() {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 200);
+        };
+        
+        // Make notification relative and add close button
+        notification.style.position = 'relative';
+        notification.appendChild(closeBtn);
+        
+        // Auto hide after 5 seconds
+        setTimeout(function() {
+            notification.style.transition = 'opacity 0.5s ease-out';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 500);
+        }, 5000); // 5000ms = 5 detik
+    }
+});
+</script>
 </body>
 </html>
