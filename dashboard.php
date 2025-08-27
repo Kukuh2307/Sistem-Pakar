@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $gejala_terpilih_names[] = $gejala['nama_gejala'];
         }
         
-        // Lakukan perhitungan CF
-        $query = "SELECT DISTINCT p.id_penyakit, p.nama_penyakit, p.deskripsi, p.solusi
+        // Lakukan perhitungan CF - Ambil penyakit beserta deskripsi dan solusi
+        $query = "SELECT DISTINCT p.id_penyakit, p.nama_penyakit
                   FROM penyakit p 
                   JOIN basis_pengetahuan b ON p.id_penyakit = b.id_penyakit
                   WHERE b.id_gejala IN ($placeholders_gejala)";
@@ -42,6 +42,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         
         foreach ($penyakit_list as $penyakit) {
             $id_penyakit = $penyakit['id_penyakit'];
+            
+            // Parse nama penyakit untuk mendapatkan deskripsi dan solusi
+            $nama_lengkap = $penyakit['nama_penyakit'];
+            $parts = explode('||', $nama_lengkap);
+            $nama_penyakit = trim($parts[0]);
+            $deskripsi = '';
+            $solusi = '';
+            
+            // Extract deskripsi dan solusi dari nama penyakit
+            for ($i = 1; $i < count($parts); $i++) {
+                $part = trim($parts[$i]);
+                if (stripos($part, 'REKOMENDASI') !== false || stripos($part, 'Rekomendasi') !== false) {
+                    // Ambil bagian setelah "REKOMENDASI" atau "Rekomendasi"
+                    if ($i + 1 < count($parts)) {
+                        $solusi = trim($parts[$i + 1]);
+                        break;
+                    }
+                }
+            }
             
             // Ambil semua basis pengetahuan untuk penyakit ini dengan gejala yang dipilih
             $query_cf = "SELECT * FROM basis_pengetahuan 
@@ -63,16 +82,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                     $first = false;
                 } else {
                     // Formula CF kombinasi: CF_total + CF_new * (1 - CF_total)
-                    $cf_total = $cf_total + $cf * (1 - $cf_total);
+                    $cf_total = $cf_total + $cf * (1 - abs($cf_total));
                 }
             }
             
             $hasil_diagnosa[] = [
                 'id_penyakit' => $id_penyakit,
-                'penyakit' => $penyakit['nama_penyakit'],
-                'deskripsi' => $penyakit['deskripsi'],
-                'solusi' => $penyakit['solusi'],
-                'cf' => round($cf_total * 100, 2),
+                'penyakit' => $nama_penyakit,
+                'deskripsi' => $deskripsi,
+                'solusi' => $solusi,
+                'cf' => round(abs($cf_total) * 100, 2),
                 'jumlah_gejala_cocok' => count($cf_data)
             ];
         }
@@ -82,27 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             return $b['cf'] <=> $a['cf'];
         });
         
-        // Simpan hasil diagnosa ke database (opsional - untuk riwayat)
-        if (!empty($hasil_diagnosa)) {
-            $penyakit_teratas = $hasil_diagnosa[0];
-            $gejala_string = implode(',', $gejala_terpilih_names);
-            
-            // Cek apakah tabel hasil_diagnosa ada, jika tidak skip penyimpanan
-            try {
-                $stmt = $pdo->prepare("INSERT INTO hasil_diagnosa (user_id, penyakit_terdeteksi, tingkat_kepercayaan, gejala_dipilih, tanggal_diagnosa) VALUES (?, ?, ?, ?, NOW())");
-                $stmt->execute([
-                    $_SESSION['user_id'], 
-                    $penyakit_teratas['penyakit'], 
-                    $penyakit_teratas['cf'], 
-                    $gejala_string
-                ]);
-            } catch (PDOException $e) {
-                // Jika tabel tidak ada, lanjutkan tanpa menyimpan
-                error_log('Tabel hasil_diagnosa tidak ditemukan: ' . $e->getMessage());
-            }
-        }
-        
-        $message = 'Diagnosa berhasil dilakukan! Ditemukan ' . count($hasil_diagnosa) . ' kemungkinan penyakit.';
+        $message = 'Diagnosa berhasil dilakukan! Ditemukan ' . count($hasil_diagnosa) . ' kemungkinan masalah.';
     } else {
         $message = 'Silakan pilih minimal satu gejala untuk diagnosa.';
     }
@@ -111,17 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 // Ambil data gejala dari database
 $stmt = $pdo->query("SELECT id_gejala, nama_gejala FROM gejala ORDER BY nama_gejala");
 $gejala_options = $stmt->fetchAll();
-
-// Ambil riwayat diagnosa terakhir (jika tabel ada)
-$riwayat_diagnosa = [];
-try {
-    $stmt = $pdo->prepare("SELECT * FROM hasil_diagnosa WHERE user_id = ? ORDER BY tanggal_diagnosa DESC LIMIT 5");
-    $stmt->execute([$_SESSION['user_id']]);
-    $riwayat_diagnosa = $stmt->fetchAll();
-} catch (PDOException $e) {
-    // Jika tabel tidak ada, lanjutkan tanpa riwayat
-    error_log('Tabel hasil_diagnosa tidak ditemukan: ' . $e->getMessage());
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -163,7 +151,7 @@ try {
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <?php if ($message): ?>
-            <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg fade-in">
+            <div class="mb-6 <?php echo strpos($message, 'berhasil') !== false ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'; ?> border px-4 py-3 rounded-lg fade-in">
                 <?php echo htmlspecialchars($message); ?>
             </div>
         <?php endif; ?>
@@ -191,9 +179,9 @@ try {
                 <div class="px-6 py-4">
                     <div class="space-y-2">
                         <p class="text-sm text-gray-600">Jenis Kelamin</p>
-                        <p class="text-lg font-semibold text-gray-800"><?php echo htmlspecialchars($user['jenis_kelamin']); ?></p>
+                        <p class="text-lg font-semibold text-gray-800"><?php echo ucfirst(htmlspecialchars($user['jenis_kelamin'])); ?></p>
                         <p class="text-sm text-gray-600">Umur</p>
-                        <p class="text-lg font-semibold text-gray-800"><?php echo htmlspecialchars($user['umur']); ?> tahun</p>
+                        <p class="text-lg font-semibold text-gray-800"><?php echo htmlspecialchars($user['umur'] ?: 'Tidak diisi'); ?> <?php echo $user['umur'] ? 'tahun' : ''; ?></p>
                     </div>
                 </div>
             </div>
@@ -217,23 +205,23 @@ try {
         <div class="bg-white shadow-lg rounded-lg mb-8">
             <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Pilih Gejala untuk Diagnosa</h3>
-                <p class="text-indigo-100 text-sm">Pilih gejala yang Anda alami untuk mendapatkan diagnosa penyakit menggunakan metode Certainty Factor</p>
+                <p class="text-indigo-100 text-sm">Pilih gejala yang dialami siswa untuk mendapatkan diagnosa penggunaan HP berlebihan menggunakan metode Certainty Factor</p>
             </div>
             <div class="px-6 py-6">
                 <form method="POST" class="space-y-4" id="diagnosisForm">
                     <input type="hidden" name="action" value="diagnosa">
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 gap-4">
                         <?php if (!empty($gejala_options)): ?>
                             <?php foreach ($gejala_options as $gejala): ?>
-                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                                <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                                     <input type="checkbox" name="gejala[]" value="<?php echo $gejala['id_gejala']; ?>" 
-                                           class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                                    <span class="ml-3 text-gray-700 font-medium"><?php echo htmlspecialchars($gejala['nama_gejala']); ?></span>
+                                           class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-1">
+                                    <span class="ml-3 text-gray-700 font-medium leading-relaxed"><?php echo htmlspecialchars($gejala['nama_gejala']); ?></span>
                                 </label>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <div class="col-span-3 text-center py-8">
+                            <div class="text-center py-8">
                                 <p class="text-gray-500">Tidak ada data gejala tersedia.</p>
                             </div>
                         <?php endif; ?>
@@ -266,14 +254,15 @@ try {
                 <h3 class="text-lg font-medium text-white">Gejala yang Dipilih</h3>
             </div>
             <div class="px-6 py-4">
-                <div class="flex flex-wrap gap-2">
-                    <?php foreach ($gejala_terpilih_names as $gejala_name): ?>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="space-y-2">
+                    <?php foreach ($gejala_terpilih_names as $index => $gejala_name): ?>
+                        <div class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 mr-2 mb-2">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
+                            <span class="mr-1"><?php echo ($index + 1); ?>.</span>
                             <?php echo htmlspecialchars($gejala_name); ?>
-                        </span>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -284,16 +273,16 @@ try {
         <?php if (!empty($hasil_diagnosa)): ?>
         <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
             <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
-                <h3 class="text-lg font-medium text-white">Hasil Diagnosa</h3>
+                <h3 class="text-lg font-medium text-white">Hasil Diagnosa Penggunaan HP Berlebihan</h3>
                 <p class="text-green-100 text-sm">Berdasarkan <?php echo count($gejala_terpilih_names); ?> gejala yang dipilih, berikut adalah hasil diagnosa menggunakan metode Certainty Factor</p>
             </div>
             <div class="px-6 py-6">
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <?php foreach ($hasil_diagnosa as $index => $hasil): ?>
                         <div class="bg-gray-50 p-6 rounded-lg border-l-4 <?php echo $index === 0 ? 'border-green-500' : 'border-gray-300'; ?>">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <div class="flex items-center mb-2">
+                                    <div class="flex items-center mb-3">
                                         <h4 class="text-xl font-semibold text-gray-800">
                                             <?php echo htmlspecialchars($hasil['penyakit']); ?>
                                         </h4>
@@ -307,11 +296,7 @@ try {
                                         <?php endif; ?>
                                     </div>
                                     
-                                    <?php if (!empty($hasil['deskripsi'])): ?>
-                                    <p class="text-gray-600 mb-3"><?php echo htmlspecialchars($hasil['deskripsi']); ?></p>
-                                    <?php endif; ?>
-                                    
-                                    <div class="text-sm text-gray-500 mb-3">
+                                    <div class="text-sm text-gray-500 mb-4">
                                         <span class="inline-flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -322,8 +307,13 @@ try {
                                     
                                     <?php if (!empty($hasil['solusi'])): ?>
                                     <div class="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                                        <h5 class="font-medium text-gray-800 mb-2">Rekomendasi:</h5>
-                                        <p class="text-gray-600 text-sm"><?php echo htmlspecialchars($hasil['solusi']); ?></p>
+                                        <h5 class="font-medium text-gray-800 mb-2 flex items-center">
+                                            <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                            </svg>
+                                            Rekomendasi Penanganan:
+                                        </h5>
+                                        <p class="text-gray-600 text-sm leading-relaxed"><?php echo htmlspecialchars($hasil['solusi']); ?></p>
                                     </div>
                                     <?php endif; ?>
                                 </div>
@@ -359,69 +349,11 @@ try {
                             <h5 class="font-medium text-blue-800 mb-1">Catatan Penting</h5>
                             <p class="text-sm text-blue-700">
                                 Hasil diagnosa ini bersifat prediktif berdasarkan gejala yang dipilih menggunakan metode Certainty Factor. 
-                                Untuk diagnosa yang lebih akurat dan penanganan yang tepat, sangat disarankan untuk berkonsultasi dengan tenaga medis profesional.
+                                Rekomendasi di atas dapat diterapkan sesuai dengan tingkat keparahan yang terdeteksi. Untuk penanganan yang lebih komprehensif, 
+                                disarankan melibatkan guru BK, orang tua, dan konselor sekolah.
                             </p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-        
-        <!-- Statistics -->
-        <div class="bg-white shadow-lg rounded-lg mb-8">
-            <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
-                <h3 class="text-lg font-medium text-white">Ringkasan Diagnosa</h3>
-            </div>
-            <div class="px-6 py-6">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-orange-600"><?php echo count($gejala_terpilih_names); ?></div>
-                        <div class="text-gray-600">Gejala Dipilih</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-blue-600"><?php echo count($gejala_options); ?></div>
-                        <div class="text-gray-600">Total Gejala</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-green-600"><?php echo count($hasil_diagnosa); ?></div>
-                        <div class="text-gray-600">Kemungkinan Penyakit</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-600">
-                            <?php 
-                            if (!empty($hasil_diagnosa)) {
-                                echo $hasil_diagnosa[0]['cf'];
-                            } else {
-                                echo '0';
-                            }
-                            ?>%
-                        </div>
-                        <div class="text-gray-600">CF Tertinggi</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Riwayat Diagnosa -->
-        <?php if (!empty($riwayat_diagnosa)): ?>
-        <div class="bg-white shadow-lg rounded-lg">
-            <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-                <h3 class="text-lg font-medium text-white">Riwayat Diagnosa Terakhir</h3>
-            </div>
-            <div class="px-6 py-6">
-                <div class="space-y-3">
-                    <?php foreach ($riwayat_diagnosa as $riwayat): ?>
-                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <div class="font-medium text-gray-800"><?php echo htmlspecialchars($riwayat['penyakit_terdeteksi']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo date('d M Y H:i', strtotime($riwayat['tanggal_diagnosa'])); ?></div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-green-600"><?php echo $riwayat['tingkat_kepercayaan']; ?>%</div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -457,6 +389,7 @@ try {
             }
             
             // Show loading state
+            const originalHTML = submitButton.innerHTML;
             submitButton.innerHTML = `
                 <span class="inline-flex items-center">
                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -467,6 +400,12 @@ try {
                 </span>
             `;
             submitButton.disabled = true;
+            
+            // Reset button after a delay if form submission fails
+            setTimeout(function() {
+                submitButton.innerHTML = originalHTML;
+                submitButton.disabled = false;
+            }, 10000);
         });
         
         // Initial count update
