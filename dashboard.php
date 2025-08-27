@@ -81,8 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                     $cf_total = $cf;
                     $first = false;
                 } else {
+                    // formula CF Old
+                    $cf_total = $cf_total + $cf * (1 - $cf_total);
                     // Formula CF kombinasi: CF_total + CF_new * (1 - CF_total)
-                    $cf_total = $cf_total + $cf * (1 - abs($cf_total));
+                    // $cf_total = $cf_total + $cf * (1 - abs($cf_total));
                 }
             }
             
