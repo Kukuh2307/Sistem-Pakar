@@ -16,73 +16,45 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Ambil dan decode data dari POST
 $user_data = isset($_POST['user_data']) ? json_decode($_POST['user_data'], true) : null;
-$gejala_terpilih_json = isset($_POST['gejala_terpilih']) ? $_POST['gejala_terpilih'] : '[]';
-$hasil_diagnosa_json = isset($_POST['hasil_diagnosa']) ? $_POST['hasil_diagnosa'] : '[]';
-
-$gejala_terpilih = json_decode($gejala_terpilih_json, true);
-$hasil_diagnosa = json_decode($hasil_diagnosa_json, true);
+$gejala_terpilih = isset($_POST['gejala_terpilih']) ? json_decode($_POST['gejala_terpilih'], true) : [];
+$hasil_diagnosa = isset($_POST['hasil_diagnosa']) ? json_decode($_POST['hasil_diagnosa'], true) : [];
 
 if (!$user_data || empty($hasil_diagnosa)) {
     die("Data tidak lengkap untuk membuat laporan.");
 }
 
-// --- PENGOLAHAN DATA & PENYIMPANAN KE DATABASE ---
+// --- PENGOLAHAN DATA UNTUK SURAT ---
 
-// 1. Generate Nomor Surat Otomatis
+// 1. Generate Nomor Surat Otomatis (Contoh: 001/BK-UNP/VIII/2025)
 function getRomanMonth($month) {
     $romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
     return $romans[$month - 1];
 }
-// Ambil nomor urut terakhir dari database untuk bulan dan tahun ini
-$stmt = $pdo->prepare("SELECT MAX(CAST(SUBSTRING_INDEX(nomor_surat, '/', 1) AS UNSIGNED)) as max_nomor 
-                       FROM history_diagnosa 
-                       WHERE nomor_surat LIKE ? AND nomor_surat LIKE ?");
-$bulan_romawi = getRomanMonth(date('n'));
-$tahun = date('Y');
-$stmt->execute([
-    "%/BK-UNP/$bulan_romawi/$tahun",
-    "%/$tahun"
-]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-$next_nomor = isset($row['max_nomor']) && $row['max_nomor'] ? $row['max_nomor'] + 1 : 1;
+$nomor_surat = sprintf("%03d/BK-UNP/%s/%d", $user_data['id'], getRomanMonth(date('n')), date('Y'));
 
-$nomor_surat = sprintf("%03d/BK-UNP/%s/%d", $next_nomor, $bulan_romawi, $tahun);
-
-// 2. Siapkan nama file PDF
-$filename = "laporan_assesment_" . strtolower(str_replace(' ', '_', $user_data['nama_lengkap'])) . "_" . date('Ymd') . ".pdf";
-
-// 3. Simpan data ke tabel history_diagnosa
-try {
-    $stmt = $pdo->prepare(
-        "INSERT INTO history_diagnosa (nomor_surat, user_id, tanggal, gejala_terpilih, hasil_diagnosa, pdf_filename) 
-         VALUES (?, ?, NOW(), ?, ?, ?)"
-    );
-    $stmt->execute([
-        $nomor_surat,
-        $_SESSION['user_id'],
-        $gejala_terpilih_json,
-        $hasil_diagnosa_json,
-        $filename
-    ]);
-} catch (PDOException $e) {
-    die("Gagal menyimpan riwayat diagnosa: " . $e->getMessage());
-}
-
-// 4. Kumpulkan semua rekomendasi dari hasil diagnosa
+// 2. Ambil Rekomendasi dari hasil CF tertinggi
+// Ambil semua rekomendasi dari hasil diagnosa
 $rekomendasi = [];
 foreach ($hasil_diagnosa as $hasil) {
     if (!empty($hasil['solusi'])) {
-        $rekomendasi[] = $hasil['solusi'];
+        if (is_array($hasil['solusi'])) {
+            foreach ($hasil['solusi'] as $solusi) {
+                $rekomendasi[] = $solusi;
+            }
+        } else {
+            $rekomendasi[] = $hasil['solusi'];
+        }
     }
 }
 if (empty($rekomendasi)) {
     $rekomendasi[] = 'Tidak ada rekomendasi spesifik.';
 }
 
-
-// 5. Konversi gambar ke Base64 untuk disematkan di PDF
+// 3. Konversi gambar ke Base64 untuk disematkan di PDF
 function imageToBase64($path) {
-    if (!file_exists($path)) return '';
+    if (!file_exists($path)) {
+        return '';
+    }
     $type = pathinfo($path, PATHINFO_EXTENSION);
     $data = file_get_contents($path);
     return 'data:image/' . $type . ';base64,' . base64_encode($data);
@@ -117,7 +89,7 @@ $html = '
             margin-bottom: 20px;
         }
         .kop-surat img {
-            width: 120%;
+            width: 125%;
         }
         .konten {
             margin-top: 20px;
@@ -221,7 +193,7 @@ $html = '
              <tr>
                 <td>Sekolah</td>
                 <td>:</td>
-                <td>-</td>
+                <td>SDM 1 Betet</td>
             </tr>
              <tr>
                 <td>Keterangan</td>
@@ -230,7 +202,7 @@ $html = '
             </tr>
         </table>
         
-        <p>Telah dilakukan tes assasement sederhana terkait penggunaan dan potensi kecanduan HP pada tanggal ' . date('d F Y') . ' dengan hasil sebagai berikut:</p>
+        <p>Telah dilakukan tes assasement sederhana terkait penggunaan dan potensi kecanduan HP pada tanggal <br> ' . date('d F Y') . ' dengan hasil sebagai berikut:</p>
         
         <div class="section-title"><strong>Gejala yang teramati:</strong></div>
         <ul class="list">';
@@ -248,14 +220,15 @@ $html .= '
 $html .= '
     </ul>
     </div>
-    
-    <div style="page-break-before: always;"></div>
+    <!-- Halaman 1 selesai -->
 
+    <div style="page-break-before: always;"></div>
+    <!-- Halaman 2: Rekomendasi dan Penutup -->
     <div class="konten">
     <div class="section-title"><strong>Rekomendasi:</strong></div>
     <ul class="list">';
-    foreach ($rekomendasi as $rek) {
-         $html .= '<li>' . htmlspecialchars($rek) . '</li>';
+    foreach ($rekomendasi as $hasil) {
+         $html .= '<li>' . htmlspecialchars($hasil) . '</li>';
     }
 $html .= '
     </ul>
@@ -272,7 +245,7 @@ $html .= '
 </body>
 </html>';
 
-// --- GENERATE & OUTPUT PDF ---
+// --- GENERATE PDF ---
 
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
@@ -283,14 +256,18 @@ $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
-// Tampilkan PDF di browser (preview).
-$dompdf->stream($filename, ["Attachment" => false]);
+$filename = "laporan_assesment_" . strtolower(str_replace(' ', '_', $user_data['nama_lengkap'])) . ".pdf";
 
-/*
-// Untuk langsung download file PDF tanpa preview, hapus komentar pada baris di bawah ini 
-// dan berikan komentar pada baris di atasnya.
-// $dompdf->stream($filename, ["Attachment" => true]);
-*/
+// --- OUTPUT KE BROWSER ---
+
+// Opsi 1: Tampilkan PDF di browser (preview). Pengguna bisa download manual dari preview.
+// $dompdf->stream($filename, ["Attachment" => false]);
+
+
+// Opsi 2: Langsung download file PDF tanpa preview.
+// Untuk mengaktifkan, hapus komentar pada baris di bawah ini dan berikan komentar pada baris di atas.
+$dompdf->stream($filename, ["Attachment" => true]);
+
 
 exit;
 ?>

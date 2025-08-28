@@ -379,7 +379,6 @@ $gejala_options = $stmt->fetchAll();
                 <h3 class="text-lg font-medium text-white">Pilih Gejala untuk Diagnosa</h3>
                 <p class="text-indigo-100 text-sm">Pilih gejala yang dialami siswa untuk mendapatkan diagnosa penggunaan HP berlebihan menggunakan metode Certainty Factor</p>
             </div>
-            
             <div class="px-6 py-6">
                 <form method="POST" class="space-y-4" id="diagnosisForm">
                     <input type="hidden" name="action" value="diagnosa">
@@ -594,17 +593,6 @@ $gejala_options = $stmt->fetchAll();
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <?php if (!empty($history['pdf_filename'])): ?>
-                                                <a href="download_pdf.php?file=<?php echo urlencode($history['pdf_filename']); ?>" 
-                                                   class="text-indigo-600 hover:text-indigo-900 inline-flex items-center mr-3">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                    </svg>
-                                                    Download PDF
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="text-gray-400 text-sm">PDF tidak tersedia</span>
-                                            <?php endif; ?>
                                             <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
                                                     class="text-blue-600 hover:text-blue-900 inline-flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
