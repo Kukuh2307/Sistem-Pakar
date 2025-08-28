@@ -177,9 +177,9 @@ function generatePDFContent($user, $gejala_terpilih, $hasil_diagnosa) {
             .section-title { background-color: #f0f0f0; padding: 10px; font-weight: bold; margin-bottom: 10px; }
             .hasil-item { margin-bottom: 20px; padding: 15px; border-left: 4px solid #007bff; background-color: #f8f9fa; }
             .hasil-utama { border-left-color: #28a745; }
-            .cf-tinggi { color: #28a745; font-weight: bold; }
+            .cf-rendah { color: #28a745; font-weight: bold; }
             .cf-sedang { color: #ffc107; font-weight: bold; }
-            .cf-rendah { color: #dc3545; font-weight: bold; }
+            .cf-tinggi { color: #dc3545; font-weight: bold; }
             .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 15px; }
             ol li { margin-bottom: 5px; }
             .rekomendasi { background-color: #e7f3ff; padding: 10px; border-radius: 5px; margin-top: 10px; }
@@ -302,7 +302,7 @@ $gejala_options = $stmt->fetchAll();
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-700">Halo, <?php echo htmlspecialchars($user['username']); ?>!</span>
-                    <a href="logout.php" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                    <a href="logout.php" class="bg-[#FF4F0F] text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
                         Logout
                     </a>
                 </div>
@@ -312,7 +312,7 @@ $gejala_options = $stmt->fetchAll();
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 mt-14">
         <?php if ($message): ?>
-            <div class="mb-6 <?php echo strpos($message, 'berhasil') !== false ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'; ?> border px-4 py-3 rounded-lg fade-in relative">
+            <div class="mb-6 <?php echo strpos($message, 'berhasil') !== false ? 'bg-green-100 border-green-400 text-green-700' : 'bg-[#FF4F0F] border-red-400 text-red-700'; ?> border px-4 py-3 rounded-lg fade-in relative">
                 <?php echo htmlspecialchars($message); ?>
                 <?php if ($pdf_generated && !empty($pdf_filename)): ?>
                     <div class="mt-3">
@@ -375,7 +375,7 @@ $gejala_options = $stmt->fetchAll();
         
         <!-- Form Diagnosa -->
         <div class="bg-white shadow-lg rounded-lg mb-8">
-            <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4">
+            <div class="bg-teal-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Pilih Gejala untuk Diagnosa</h3>
                 <p class="text-indigo-100 text-sm">Pilih gejala yang dialami siswa untuk mendapatkan diagnosa penggunaan HP berlebihan menggunakan metode Certainty Factor</p>
             </div>
@@ -405,7 +405,7 @@ $gejala_options = $stmt->fetchAll();
                                 <span id="selectedCount">0</span> gejala dipilih
                             </div>
                             <button type="submit" 
-                                    class="bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors font-medium">
+                                    class="bg-[#065084] text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium">
                                 <span class="inline-flex items-center">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -422,7 +422,7 @@ $gejala_options = $stmt->fetchAll();
         <!-- Gejala yang Dipilih -->
         <?php if (!empty($gejala_terpilih_names)): ?>
         <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <div class="bg-teal-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Gejala yang Dipilih</h3>
             </div>
             <div class="px-6 py-4">
@@ -444,7 +444,7 @@ $gejala_options = $stmt->fetchAll();
         <!-- Hasil Diagnosa -->
         <?php if (!empty($hasil_diagnosa)): ?>
         <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-            <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
+            <div class="bg-teal-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Hasil Diagnosa Penggunaan HP Berlebihan</h3>
                 <p class="text-green-100 text-sm">Berdasarkan <?php echo count($gejala_terpilih_names); ?> gejala yang dipilih, berikut adalah hasil diagnosa menggunakan metode Certainty Factor</p>
             </div>
@@ -454,7 +454,7 @@ $gejala_options = $stmt->fetchAll();
             <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
             <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
             
-            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            <button type="submit" class="bg-[#065084] text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 <span class="inline-flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
@@ -467,7 +467,7 @@ $gejala_options = $stmt->fetchAll();
             <div class="px-6 py-6">
                 <div class="space-y-6">
                     <?php foreach ($hasil_diagnosa as $index => $hasil): ?>
-                        <div class="bg-gray-50 p-6 rounded-lg border-l-4 <?php echo $index === 0 ? 'border-green-500' : 'border-gray-300'; ?>">
+                        <div class="bg-gray-50 p-6 rounded-lg border-l-4 <?php echo $index === 0 ? 'border-[#FF4F0F]' : 'border-gray-300'; ?>">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
                                     <div class="flex items-center mb-3">
@@ -475,7 +475,7 @@ $gejala_options = $stmt->fetchAll();
                                             <?php echo htmlspecialchars($hasil['penyakit']); ?>
                                         </h4>
                                         <?php if ($index === 0): ?>
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-3">
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#FF4F0F] text-white ml-3">
                                                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                                 </svg>
@@ -507,12 +507,12 @@ $gejala_options = $stmt->fetchAll();
                                 </div>
                                 
                                 <div class="text-right ml-6">
-                                    <div class="text-3xl font-bold <?php echo $hasil['cf'] >= 70 ? 'text-green-600' : ($hasil['cf'] >= 40 ? 'text-yellow-600' : 'text-red-600'); ?>">
+                                    <div class="text-3xl font-bold <?php echo $hasil['cf'] >= 70 ? 'text-red-600' : ($hasil['cf'] >= 40 ? 'text-yellow-600' : 'text-green-600'); ?>">
                                         <?php echo $hasil['cf']; ?>%
                                     </div>
                                     <div class="text-sm text-gray-500 mb-2">Tingkat Kepercayaan</div>
                                     <div class="w-24 bg-gray-200 rounded-full h-3">
-                                        <div class="<?php echo $hasil['cf'] >= 70 ? 'bg-green-600' : ($hasil['cf'] >= 40 ? 'bg-yellow-600' : 'bg-red-600'); ?> h-3 rounded-full transition-all duration-500" 
+                                        <div class="<?php echo $hasil['cf'] >= 70 ? 'bg-red-600' : ($hasil['cf'] >= 40 ? 'bg-yellow-600' : 'bg-green-600'); ?> h-3 rounded-full transition-all duration-500" 
                                              style="width: <?php echo min($hasil['cf'], 100); ?>%"></div>
                                     </div>
                                     <div class="text-xs text-gray-400 mt-1">
@@ -549,7 +549,7 @@ $gejala_options = $stmt->fetchAll();
 
         <!-- History Diagnosa -->
         <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-            <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+            <div class="bg-teal-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
                 <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
             </div>
@@ -584,7 +584,7 @@ $gejala_options = $stmt->fetchAll();
                                                 <?php if (!empty($hasil_data)): ?>
                                                     <?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?>
                                                     <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-green-100 text-green-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'); ?>">
+                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-[#FF4F0F] text-white' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-white' : 'bg-green-100 text-white'); ?> <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-[#text-red' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-white'); ?>">
                                                         <?php echo $hasil_data[0]['cf']; ?>%
                                                     </span>
                                                 <?php else: ?>
@@ -737,15 +737,15 @@ $gejala_options = $stmt->fetchAll();
                     <div class="space-y-4">`;
         
         hasilData.forEach(function(hasil, index) {
-            const cfColor = hasil.cf >= 70 ? 'text-green-600' : (hasil.cf >= 40 ? 'text-yellow-600' : 'text-red-600');
-            const borderColor = index === 0 ? 'border-green-500' : 'border-gray-300';
+            const cfColor = hasil.cf >= 70 ? 'text-red-600' : (hasil.cf >= 40 ? 'text-yellow-600' : 'text-green-600');
+            const borderColor = index === 0 ? 'border-red-500' : 'border-gray-300';
             
             content += `
                 <div class="bg-gray-50 p-4 rounded-lg border-l-4 ${borderColor}">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <h5 class="font-semibold text-gray-800">${hasil.penyakit}</h5>
-                            ${index === 0 ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">Diagnosa Utama</span>' : ''}
+                            ${index === 0 ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#FF4F0F] text-white mt-1">Diagnosa Utama</span>' : ''}
                             <p class="text-sm text-gray-600 mt-2">Gejala cocok: ${hasil.jumlah_gejala_cocok} dari ${gejalaData.length}</p>
                             ${hasil.solusi ? `<div class="mt-3 p-3 bg-white rounded border"><h6 class="font-medium text-sm">Rekomendasi:</h6><p class="text-sm text-gray-600 mt-1">${hasil.solusi}</p></div>` : ''}
                         </div>
