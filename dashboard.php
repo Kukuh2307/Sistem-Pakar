@@ -11,6 +11,8 @@ $user = $stmt->fetch();
 $message = '';
 $hasil_diagnosa = [];
 $gejala_terpilih_names = [];
+$pdf_generated = false;
+$pdf_filename = '';
 
 // Proses diagnosa dengan algoritma Certainty Factor
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'diagnosa') {
@@ -96,30 +98,164 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             ];
         }
         
-        // Simpan hasil diagnosa ke history (HAPUS KONDISI GANDA)
-        if (!empty($hasil_diagnosa) && !empty($gejala_terpilih_names)) {
-            $gejala_json = json_encode($gejala_terpilih_names);
-            $hasil_json = json_encode($hasil_diagnosa);
-            
-            try {
-                $stmt = $pdo->prepare("INSERT INTO history_diagnosa (user_id, tanggal, gejala_terpilih, hasil_diagnosa) VALUES (?, NOW(), ?, ?)");
-                $stmt->execute([$_SESSION['user_id'], $gejala_json, $hasil_json]);
-                $last_history_id = $pdo->lastInsertId();
-            } catch (PDOException $e) {
-                error_log("Error saving diagnosis history: " . $e->getMessage());
-                // Jangan tampilkan error ke user untuk keamanan
-            }
-        }
-        
         // Urutkan berdasarkan nilai CF tertinggi
         usort($hasil_diagnosa, function ($a, $b) {
             return $b['cf'] <=> $a['cf'];
         });
         
-        $message = 'Diagnosa berhasil dilakukan! Ditemukan ' . count($hasil_diagnosa) . ' kemungkinan masalah.';
+        // Simpan hasil diagnosa ke history dan generate PDF
+        if (!empty($hasil_diagnosa) && !empty($gejala_terpilih_names)) {
+            $gejala_json = json_encode($gejala_terpilih_names);
+            $hasil_json = json_encode($hasil_diagnosa);
+            
+            try {
+                // Generate filename PDF yang unik
+                $pdf_filename = 'diagnosa_report_' . $_SESSION['user_id'] . '_' . date('Ymd_His') . '.pdf';
+                
+                // Simpan ke database dengan filename PDF
+                $stmt = $pdo->prepare("INSERT INTO history_diagnosa (user_id, tanggal, gejala_terpilih, hasil_diagnosa, pdf_filename) VALUES (?, NOW(), ?, ?, ?)");
+                $stmt->execute([$_SESSION['user_id'], $gejala_json, $hasil_json, $pdf_filename]);
+                $last_history_id = $pdo->lastInsertId();
+                
+                // Generate PDF
+                $pdf_content = generatePDFContent($user, $gejala_terpilih_names, $hasil_diagnosa);
+                
+                // Simpan PDF ke direktori
+                $pdf_dir = 'pdf_reports';
+                if (!file_exists($pdf_dir)) {
+                    mkdir($pdf_dir, 0755, true);
+                }
+                
+                // Gunakan library PDF sederhana atau Dompdf
+                if (class_exists('Dompdf\Dompdf')) {
+                    require_once 'vendor/autoload.php';
+                    
+                    $options = new \Dompdf\Options();
+                    $options->set('isHtml5ParserEnabled', true);
+                    $options->set('isRemoteEnabled', true);
+                    $options->set('defaultFont', 'Helvetica');
+                    
+                    $dompdf = new \Dompdf\Dompdf($options);
+                    $dompdf->loadHtml($pdf_content);
+                    $dompdf->setPaper('A4', 'portrait');
+                    $dompdf->render();
+                    
+                    // Simpan PDF
+                    file_put_contents($pdf_dir . '/' . $pdf_filename, $dompdf->output());
+                    $pdf_generated = true;
+                }
+                
+            } catch (PDOException $e) {
+                error_log("Error saving diagnosis history: " . $e->getMessage());
+                $message = 'Diagnosa berhasil dilakukan namun terjadi error saat menyimpan laporan.';
+            }
+        }
+        
+        if ($pdf_generated) {
+            $message = 'Diagnosa berhasil dilakukan! Ditemukan ' . count($hasil_diagnosa) . ' kemungkinan masalah. Laporan PDF telah dibuat dan siap didownload.';
+        } else {
+            $message = 'Diagnosa berhasil dilakukan! Ditemukan ' . count($hasil_diagnosa) . ' kemungkinan masalah.';
+        }
+        
     } else {
         $message = 'Silakan pilih minimal satu gejala untuk diagnosa.';
     }
+}
+
+// Fungsi untuk generate konten PDF
+function generatePDFContent($user, $gejala_terpilih, $hasil_diagnosa) {
+    $html = '
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Laporan Diagnosa Penggunaan HP Berlebihan</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+            .section { margin-bottom: 25px; }
+            .section-title { background-color: #f0f0f0; padding: 10px; font-weight: bold; margin-bottom: 10px; }
+            .hasil-item { margin-bottom: 20px; padding: 15px; border-left: 4px solid #007bff; background-color: #f8f9fa; }
+            .hasil-utama { border-left-color: #28a745; }
+            .cf-tinggi { color: #28a745; font-weight: bold; }
+            .cf-sedang { color: #ffc107; font-weight: bold; }
+            .cf-rendah { color: #dc3545; font-weight: bold; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 15px; }
+            ol li { margin-bottom: 5px; }
+            .rekomendasi { background-color: #e7f3ff; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Laporan Diagnosa Penggunaan HP Berlebihan</h1>
+            <p><strong>Sistem Pakar dengan Metode Certainty Factor</strong></p>
+            <p>Tanggal: ' . date('d F Y, H:i') . ' WIB</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Informasi Pengguna</div>
+            <p><strong>Nama Lengkap:</strong> ' . htmlspecialchars($user['nama_lengkap']) . '</p>
+            <p><strong>Username:</strong> ' . htmlspecialchars($user['username']) . '</p>
+            <p><strong>Jenis Kelamin:</strong> ' . ucfirst(htmlspecialchars($user['jenis_kelamin'])) . '</p>
+            <p><strong>Umur:</strong> ' . ($user['umur'] ? htmlspecialchars($user['umur']) . ' tahun' : 'Tidak diisi') . '</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Gejala yang Dipilih (' . count($gejala_terpilih) . ' gejala)</div>
+            <ol>';
+    
+    foreach ($gejala_terpilih as $gejala) {
+        $html .= '<li>' . htmlspecialchars($gejala) . '</li>';
+    }
+    
+    $html .= '
+            </ol>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Hasil Diagnosa</div>';
+    
+    foreach ($hasil_diagnosa as $index => $hasil) {
+        $cf_class = ($hasil['cf'] >= 70) ? 'cf-tinggi' : (($hasil['cf'] >= 40) ? 'cf-sedang' : 'cf-rendah');
+        $tingkat = ($hasil['cf'] >= 70) ? 'Tinggi' : (($hasil['cf'] >= 40) ? 'Sedang' : 'Rendah');
+        
+        $html .= '
+            <div class="hasil-item ' . ($index === 0 ? 'hasil-utama' : '') . '">
+                <h3>' . ($index + 1) . '. ' . htmlspecialchars($hasil['penyakit']) . 
+                ($index === 0 ? ' <span style="color: #28a745;">(Diagnosa Utama)</span>' : '') . '</h3>
+                <p><strong>Tingkat Kepercayaan:</strong> <span class="' . $cf_class . '">' . $hasil['cf'] . '%</span> (' . $tingkat . ')</p>
+                <p><strong>Jumlah Gejala Cocok:</strong> ' . $hasil['jumlah_gejala_cocok'] . ' dari ' . count($gejala_terpilih) . ' gejala yang dipilih</p>';
+        
+        if (!empty($hasil['solusi'])) {
+            $html .= '
+                <div class="rekomendasi">
+                    <h4>� Rekomendasi Penanganan:</h4>
+                    <p>' . htmlspecialchars($hasil['solusi']) . '</p>
+                </div>';
+        }
+        
+        $html .= '</div>';
+    }
+    
+    $html .= '
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Catatan Penting</div>
+            <p>• Hasil diagnosa ini bersifat prediktif berdasarkan gejala yang dipilih menggunakan metode Certainty Factor.</p>
+            <p>• Rekomendasi di atas dapat diterapkan sesuai dengan tingkat keparahan yang terdeteksi.</p>
+            <p>• Untuk penanganan yang lebih komprehensif, disarankan melibatkan guru BK, orang tua, dan konselor sekolah.</p>
+            <p>• Tingkat kepercayaan: Tinggi (≥70%), Sedang (40-69%), Rendah (<40%)</p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Sistem Pakar Diagnosa Penggunaan HP Berlebihan</strong></p>
+            <p>Laporan ini dibuat secara otomatis pada ' . date('d F Y, H:i') . ' WIB</p>
+        </div>
+    </body>
+    </html>';
+    
+    return $html;
 }
 
 // Ambil history diagnosa user
@@ -176,8 +312,19 @@ $gejala_options = $stmt->fetchAll();
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 mt-14">
         <?php if ($message): ?>
-            <div class="mb-6 <?php echo strpos($message, 'berhasil') !== false ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'; ?> border px-4 py-3 rounded-lg fade-in">
+            <div class="mb-6 <?php echo strpos($message, 'berhasil') !== false ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'; ?> border px-4 py-3 rounded-lg fade-in relative">
                 <?php echo htmlspecialchars($message); ?>
+                <?php if ($pdf_generated && !empty($pdf_filename)): ?>
+                    <div class="mt-3">
+                        <a href="download_pdf.php?file=<?php echo urlencode($pdf_filename); ?>" 
+                           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download Laporan PDF
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
         
@@ -232,6 +379,7 @@ $gejala_options = $stmt->fetchAll();
                 <h3 class="text-lg font-medium text-white">Pilih Gejala untuk Diagnosa</h3>
                 <p class="text-indigo-100 text-sm">Pilih gejala yang dialami siswa untuk mendapatkan diagnosa penggunaan HP berlebihan menggunakan metode Certainty Factor</p>
             </div>
+            
             <div class="px-6 py-6">
                 <form method="POST" class="space-y-4" id="diagnosisForm">
                     <input type="hidden" name="action" value="diagnosa">
@@ -301,6 +449,22 @@ $gejala_options = $stmt->fetchAll();
                 <h3 class="text-lg font-medium text-white">Hasil Diagnosa Penggunaan HP Berlebihan</h3>
                 <p class="text-green-100 text-sm">Berdasarkan <?php echo count($gejala_terpilih_names); ?> gejala yang dipilih, berikut adalah hasil diagnosa menggunakan metode Certainty Factor</p>
             </div>
+            <div class="px-6 pt-4 border-b border-gray-200">
+        <form action="report.php" method="POST" target="_blank">
+            <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user)); ?>">
+            <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
+            <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
+            
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <span class="inline-flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Cetak Laporan Lengkap
+                </span>
+            </button>
+        </form>
+    </div>
             <div class="px-6 py-6">
                 <div class="space-y-6">
                     <?php foreach ($hasil_diagnosa as $index => $hasil): ?>
@@ -385,79 +549,109 @@ $gejala_options = $stmt->fetchAll();
         <?php endif; ?>
 
         <!-- History Diagnosa -->
-         <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-    <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-        <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
-        <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
-    </div>
-    <div class="px-6 py-6">
-        <?php if (!empty($history_diagnosa)): ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <?php foreach ($history_diagnosa as $history): ?>
-                            <?php 
-                            $gejala_data = json_decode($history['gejala_terpilih'], true);
-                            $hasil_data = json_decode($history['hasil_diagnosa'], true);
-                            ?>
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900"><?php echo date('d F Y', strtotime($history['tanggal'])); ?></div>
-                                    <div class="text-sm text-gray-500"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900"><?php echo count($gejala_data); ?> gejala</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">
-                                        <?php if (!empty($hasil_data)): ?>
-                                            <?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?>
-                                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <?php echo $hasil_data[0]['cf']; ?>%
-                                            </span>
-                                        <?php else: ?>
-                                            Tidak ada hasil
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <form action="generate_pdf.php" method="POST" class="inline">
-                                        <input type="hidden" name="action" value="generate_pdf">
-                                        <input type="hidden" name="diagnosa_id" value="<?php echo $history['id']; ?>">
-                                        <button type="submit" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                            </svg>
-                                            Download PDF
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+        <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
+                <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
             </div>
-        <?php else: ?>
-            <div class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
-                <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
+            <div class="px-6 py-6">
+                <?php if (!empty($history_diagnosa)): ?>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <?php foreach ($history_diagnosa as $history): ?>
+                                    <?php 
+                                    $gejala_data = json_decode($history['gejala_terpilih'], true);
+                                    $hasil_data = json_decode($history['hasil_diagnosa'], true);
+                                    ?>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo date('d F Y', strtotime($history['tanggal'])); ?></div>
+                                            <div class="text-sm text-gray-500"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo count($gejala_data); ?> gejala</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">
+                                                <?php if (!empty($hasil_data)): ?>
+                                                    <?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?>
+                                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-green-100 text-green-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'); ?>">
+                                                        <?php echo $hasil_data[0]['cf']; ?>%
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-gray-400">Tidak ada hasil</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <?php if (!empty($history['pdf_filename'])): ?>
+                                                <a href="download_pdf.php?file=<?php echo urlencode($history['pdf_filename']); ?>" 
+                                                   class="text-indigo-600 hover:text-indigo-900 inline-flex items-center mr-3">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                    </svg>
+                                                    Download PDF
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-gray-400 text-sm">PDF tidak tersedia</span>
+                                            <?php endif; ?>
+                                            <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
+                                                    class="text-blue-600 hover:text-blue-900 inline-flex items-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center py-8">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
+                        <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
+                    </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
-    </div>
-</div>
+        </div>
     </div>
 
+    <!-- Modal untuk detail history -->
+    <div id="detailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-gray-900">Detail Hasil Diagnosa</h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="modalContent" class="px-6 py-4">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -507,39 +701,119 @@ $gejala_options = $stmt->fetchAll();
             }, 10000);
         });
         
-// Initial count update
-updateSelectedCount();
-});
+        // Initial count update
+        updateSelectedCount();
+    });
 
-// Auto hide notification after 5 seconds
-document.addEventListener('DOMContentLoaded', function() {
-    const notification = document.querySelector('.fade-in');
-    if (notification && notification.textContent.includes('Diagnosa berhasil')) {
-        // Add close button
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&times;';
-        closeBtn.className = 'absolute top-2 right-2 text-xl font-bold hover:opacity-75';
-        closeBtn.onclick = function() {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 200);
-        };
+    // Function to show detail modal
+    function showDetails(data) {
+        const modal = document.getElementById('detailModal');
+        const modalContent = document.getElementById('modalContent');
         
-        // Make notification relative and add close button
-        notification.style.position = 'relative';
-        notification.appendChild(closeBtn);
+        const gejalaData = JSON.parse(data.gejala_terpilih);
+        const hasilData = JSON.parse(data.hasil_diagnosa);
         
-        // Auto hide after 5 seconds
-        setTimeout(function() {
-            notification.style.transition = 'opacity 0.5s ease-out';
-            notification.style.opacity = '0';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 500);
-        }, 5000); // 5000ms = 5 detik
+        let content = `
+            <div class="space-y-6">
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3">Informasi Diagnosa</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p><strong>Tanggal:</strong> ${new Date(data.tanggal).toLocaleDateString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}</p>
+                        <p><strong>Jumlah Gejala:</strong> ${gejalaData.length} gejala</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3">Gejala yang Dipilih</h4>
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <ol class="list-decimal list-inside space-y-1">`;
+        
+        gejalaData.forEach(function(gejala) {
+            content += `<li class="text-sm">${gejala}</li>`;
+        });
+        
+        content += `
+                        </ol>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3">Hasil Diagnosa</h4>
+                    <div class="space-y-4">`;
+        
+        hasilData.forEach(function(hasil, index) {
+            const cfColor = hasil.cf >= 70 ? 'text-green-600' : (hasil.cf >= 40 ? 'text-yellow-600' : 'text-red-600');
+            const borderColor = index === 0 ? 'border-green-500' : 'border-gray-300';
+            
+            content += `
+                <div class="bg-gray-50 p-4 rounded-lg border-l-4 ${borderColor}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h5 class="font-semibold text-gray-800">${hasil.penyakit}</h5>
+                            ${index === 0 ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">Diagnosa Utama</span>' : ''}
+                            <p class="text-sm text-gray-600 mt-2">Gejala cocok: ${hasil.jumlah_gejala_cocok} dari ${gejalaData.length}</p>
+                            ${hasil.solusi ? `<div class="mt-3 p-3 bg-white rounded border"><h6 class="font-medium text-sm">Rekomendasi:</h6><p class="text-sm text-gray-600 mt-1">${hasil.solusi}</p></div>` : ''}
+                        </div>
+                        <div class="text-right ml-4">
+                            <div class="text-2xl font-bold ${cfColor}">${hasil.cf}%</div>
+                            <div class="text-xs text-gray-500">Kepercayaan</div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        
+        content += `
+                    </div>
+                </div>
+            </div>`;
+        
+        modalContent.innerHTML = content;
+        modal.classList.remove('hidden');
     }
-});
-</script>
+
+    function closeModal() {
+        const modal = document.getElementById('detailModal');
+        modal.classList.add('hidden');
+    }
+
+    // Auto hide notification after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        const notification = document.querySelector('.fade-in');
+        if (notification && notification.textContent.includes('Diagnosa berhasil')) {
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'absolute top-2 right-2 text-xl font-bold hover:opacity-75';
+            closeBtn.onclick = function() {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 200);
+            };
+            
+            // Make notification relative if not already
+            if (!notification.style.position) {
+                notification.style.position = 'relative';
+            }
+            notification.appendChild(closeBtn);
+            
+            // Auto hide after 8 seconds (lebih lama karena ada tombol download)
+            setTimeout(function() {
+                notification.style.transition = 'opacity 0.5s ease-out';
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 500);
+            }, 8000);
+        }
+    });
+    </script>
 </body>
 </html>
