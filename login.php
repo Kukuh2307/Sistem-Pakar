@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body class="bg-gradient-to-br from-blue-50 to-green-100 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-4">
         <div class="bg-white rounded-2xl shadow-xl p-8">
+            <img src="img/logo.jpeg" alt="Logo" class="mx-auto w-54 h-32 object-contain">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Selamat Datang</h1>
                 <p class="text-gray-600">Silakan login ke akun Anda</p>

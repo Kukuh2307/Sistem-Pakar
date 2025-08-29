@@ -54,9 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Registrasi - User Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-br from-green-50 to-teal-100 min-h-screen py-8">
+<body class="bg-gradient-to-br from-blue-50 to-green-100 to-teal-100 min-h-screen py-8">
     <div class="max-w-2xl mx-auto px-4">
         <div class="bg-white rounded-2xl shadow-xl p-8">
+            <img src="img/logo.jpeg" alt="Logo" class="mx-auto mb-6 w-54 h-32 object-contain">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Daftar Akun Baru</h1>
                 <p class="text-gray-600">Isi data diri Anda dengan lengkap</p>
