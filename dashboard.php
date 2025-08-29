@@ -14,6 +14,13 @@ $gejala_terpilih_names = [];
 $pdf_generated = false;
 $pdf_filename = '';
 
+// Pagination untuk history diagnosa
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 5;
+$offset = ($page - 1) * $limit;
+$total_data = 0;
+$total_pages = 1;
+
 // Proses diagnosa dengan algoritma Certainty Factor
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'diagnosa') {
     error_log('POST data received: ' . print_r($_POST, true));
@@ -88,12 +95,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 }
             }
             
+            // Tentukan kategori berdasarkan CF
+            $cf_percent = round(abs($cf_total) * 100, 2);
+            $kategori = '';
+            
+            if ($cf_percent >= 70) {
+                $kategori = 'Berat';
+                $nama_penyakit = 'Pemakaian HP Berlebihan Berat';
+            } elseif ($cf_percent >= 40) {
+                $kategori = 'Sedang';
+                $nama_penyakit = 'Pemakaian HP Berlebihan Sedang';
+            } else {
+                $kategori = 'Ringan';
+                $nama_penyakit = 'Pemakaian HP Berlebihan Ringan';
+            }
+            
             $hasil_diagnosa[] = [
                 'id_penyakit' => $id_penyakit,
                 'penyakit' => $nama_penyakit,
+                'kategori' => $kategori,
                 'deskripsi' => $deskripsi,
                 'solusi' => $solusi,
-                'cf' => round(abs($cf_total) * 100, 2),
+                'cf' => $cf_percent,
                 'jumlah_gejala_cocok' => count($cf_data)
             ];
         }
@@ -217,7 +240,7 @@ function generatePDFContent($user, $gejala_terpilih, $hasil_diagnosa) {
     
     foreach ($hasil_diagnosa as $index => $hasil) {
         $cf_class = ($hasil['cf'] >= 70) ? 'cf-tinggi' : (($hasil['cf'] >= 40) ? 'cf-sedang' : 'cf-rendah');
-        $tingkat = ($hasil['cf'] >= 70) ? 'Tinggi' : (($hasil['cf'] >= 40) ? 'Sedang' : 'Rendah');
+        $tingkat = ($hasil['cf'] >= 70) ? 'Berat' : (($hasil['cf'] >= 40) ? 'Sedang' : 'Ringan');
         
         $html .= '
             <div class="hasil-item ' . ($index === 0 ? 'hasil-utama' : '') . '">
@@ -245,7 +268,7 @@ function generatePDFContent($user, $gejala_terpilih, $hasil_diagnosa) {
             <p>• Hasil diagnosa ini bersifat prediktif berdasarkan gejala yang dipilih menggunakan metode Certainty Factor.</p>
             <p>• Rekomendasi di atas dapat diterapkan sesuai dengan tingkat keparahan yang terdeteksi.</p>
             <p>• Untuk penanganan yang lebih komprehensif, disarankan melibatkan guru BK, orang tua, dan konselor sekolah.</p>
-            <p>• Tingkat kepercayaan: Tinggi (≥70%), Sedang (40-69%), Rendah (<40%)</p>
+            <p>• Tingkat kepercayaan: Berat (≥70%), Sedang (40-69%), Ringan (<40%)</p>
         </div>
         
         <div class="footer">
@@ -258,10 +281,20 @@ function generatePDFContent($user, $gejala_terpilih, $hasil_diagnosa) {
     return $html;
 }
 
-// Ambil history diagnosa user
+// Ambil history diagnosa user dengan pagination
 try {
-    $stmt = $pdo->prepare("SELECT * FROM history_diagnosa WHERE user_id = ? ORDER BY tanggal DESC");
-    $stmt->execute([$_SESSION['user_id']]);
+    // Hitung total data
+    $stmt_count = $pdo->prepare("SELECT COUNT(*) as total FROM history_diagnosa WHERE user_id = ?");
+    $stmt_count->execute([$_SESSION['user_id']]);
+    $total_data = $stmt_count->fetch()['total'];
+    $total_pages = ceil($total_data / $limit);
+    
+    // Ambil data dengan pagination
+    $stmt = $pdo->prepare("SELECT * FROM history_diagnosa WHERE user_id = ? ORDER BY tanggal DESC LIMIT ? OFFSET ?");
+    $stmt->bindValue(1, $_SESSION['user_id'], PDO::PARAM_INT);
+    $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+    $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $history_diagnosa = $stmt->fetchAll();
 } catch (PDOException $e) {
     error_log("Error fetching diagnosis history: " . $e->getMessage());
@@ -271,6 +304,10 @@ try {
 // Ambil data gejala dari database
 $stmt = $pdo->query("SELECT id_gejala, nama_gejala FROM gejala ORDER BY nama_gejala");
 $gejala_options = $stmt->fetchAll();
+
+// Hitung informasi pagination
+$start_item = $total_data > 0 ? $offset + 1 : 0;
+$end_item = min($offset + $limit, $total_data);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -325,6 +362,9 @@ $gejala_options = $stmt->fetchAll();
                         </a>
                     </div>
                 <?php endif; ?>
+                <button class="absolute top-2 right-2 text-xl font-bold hover:opacity-75" onclick="this.parentElement.remove()">
+                    &times;
+                </button>
             </div>
         <?php endif; ?>
         
@@ -388,7 +428,7 @@ $gejala_options = $stmt->fetchAll();
                             <?php foreach ($gejala_options as $gejala): ?>
                                 <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                                     <input type="checkbox" name="gejala[]" value="<?php echo $gejala['id_gejala']; ?>" 
-                                           class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-1">
+                                           class=" text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-1">
                                     <span class="ml-3 text-gray-700 font-medium leading-relaxed"><?php echo htmlspecialchars($gejala['nama_gejala']); ?></span>
                                 </label>
                             <?php endforeach; ?>
@@ -449,21 +489,21 @@ $gejala_options = $stmt->fetchAll();
                 <p class="text-green-100 text-sm">Berdasarkan <?php echo count($gejala_terpilih_names); ?> gejala yang dipilih, berikut adalah hasil diagnosa menggunakan metode Certainty Factor</p>
             </div>
             <div class="px-6 pt-4 border-b border-gray-200">
-        <form action="report.php" method="POST" target="_blank">
-            <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user)); ?>">
-            <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
-            <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
-            
-            <button type="submit" class="bg-[#065084] text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                <span class="inline-flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-                    </svg>
-                    Cetak Laporan Lengkap
-                </span>
-            </button>
-        </form>
-    </div>
+                <form action="report.php" method="POST" target="_blank">
+                    <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user)); ?>">
+                    <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
+                    <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
+                    
+                    <button type="submit" class="bg-[#065084] text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        <span class="inline-flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            </svg>
+                            Cetak Laporan Lengkap
+                        </span>
+                    </button>
+                </form>
+            </div>
             <div class="px-6 py-6">
                 <div class="space-y-6">
                     <?php foreach ($hasil_diagnosa as $index => $hasil): ?>
@@ -507,19 +547,27 @@ $gejala_options = $stmt->fetchAll();
                                 </div>
                                 
                                 <div class="text-right ml-6">
-                                    <div class="text-3xl font-bold <?php echo $hasil['cf'] >= 70 ? 'text-red-600' : ($hasil['cf'] >= 40 ? 'text-yellow-600' : 'text-green-600'); ?>">
+                                    <div class="text-3xl font-bold <?php 
+                                        if ($hasil['cf'] >= 70) echo 'text-red-600'; 
+                                        elseif ($hasil['cf'] >= 40) echo 'text-yellow-600'; 
+                                        else echo 'text-green-600'; 
+                                    ?>">
                                         <?php echo $hasil['cf']; ?>%
                                     </div>
                                     <div class="text-sm text-gray-500 mb-2">Tingkat Kepercayaan</div>
                                     <div class="w-24 bg-gray-200 rounded-full h-3">
-                                        <div class="<?php echo $hasil['cf'] >= 70 ? 'bg-red-600' : ($hasil['cf'] >= 40 ? 'bg-yellow-600' : 'bg-green-600'); ?> h-3 rounded-full transition-all duration-500" 
+                                        <div class="<?php 
+                                            if ($hasil['cf'] >= 70) echo 'bg-red-600'; 
+                                            elseif ($hasil['cf'] >= 40) echo 'bg-yellow-600'; 
+                                            else echo 'bg-green-600'; 
+                                        ?> h-3 rounded-full transition-all duration-500" 
                                              style="width: <?php echo min($hasil['cf'], 100); ?>%"></div>
                                     </div>
                                     <div class="text-xs text-gray-400 mt-1">
                                         <?php 
-                                        if ($hasil['cf'] >= 70) echo 'Tinggi';
-                                        elseif ($hasil['cf'] >= 40) echo 'Sedang';
-                                        else echo 'Rendah';
+                                        if ($hasil['cf'] >= 70) echo 'Berat'; 
+                                        elseif ($hasil['cf'] >= 40) echo 'Sedang'; 
+                                        else echo 'Ringan'; 
                                         ?>
                                     </div>
                                 </div>
@@ -548,7 +596,7 @@ $gejala_options = $stmt->fetchAll();
         <?php endif; ?>
 
         <!-- History Diagnosa -->
-        <div class="bg-white shadow-lg rounded-lg mb-8 fade-in">
+        <div id="riwayat" class="bg-white shadow-lg rounded-lg mb-8 fade-in">
             <div class="bg-teal-600 px-6 py-4">
                 <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
                 <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
@@ -566,7 +614,7 @@ $gejala_options = $stmt->fetchAll();
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <?php foreach ($history_diagnosa as $history): ?>
+                                <?php foreach ($history_diagnosa as $index => $history): ?>
                                     <?php 
                                     $gejala_data = json_decode($history['gejala_terpilih'], true);
                                     $hasil_data = json_decode($history['hasil_diagnosa'], true);
@@ -577,14 +625,14 @@ $gejala_options = $stmt->fetchAll();
                                             <div class="text-sm text-gray-500"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><?php echo count($gejala_data); ?> gejala</div>
+                                            <div class="text-sm text-gray-900"><?php echo is_array($gejala_data) ? count($gejala_data) : 0; ?> gejala</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
-                                                <?php if (!empty($hasil_data)): ?>
+                                                <?php if (!empty($hasil_data) && is_array($hasil_data)): ?>
                                                     <?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?>
                                                     <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-[#FF4F0F] text-white' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-white' : 'bg-green-100 text-white'); ?> <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-[#text-red' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-white'); ?>">
+                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-red-100 text-red-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'); ?>">
                                                         <?php echo $hasil_data[0]['cf']; ?>%
                                                     </span>
                                                 <?php else: ?>
@@ -594,8 +642,8 @@ $gejala_options = $stmt->fetchAll();
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
-                                                    class="bg-[#065084] text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium flex items-center justify-center">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    class="bg-[#065084] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                 </svg>
@@ -607,6 +655,43 @@ $gejala_options = $stmt->fetchAll();
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination -->
+                    <?php if ($total_pages > 1): ?>
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700 hidden sm:block">
+                                Menampilkan <?php echo $start_item; ?> - <?php echo $end_item; ?> dari <?php echo $total_data; ?> hasil
+                            </div>
+                            <div class="flex space-x-2">
+                                <!-- Tombol Previous -->
+                                <a href="?page=<?php echo max(1, $page - 1); ?>#riwayat" 
+                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page <= 1 ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                    &laquo; Sebelumnya
+                                </a>
+                                
+                                <!-- Numbered pages -->
+                                <?php 
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                for ($i = $start_page; $i <= $end_page; $i++): 
+                                ?>
+                                    <a href="?page=<?php echo $i; ?>#riwayat" 
+                                       class="px-3 py-1 rounded-md text-sm font-medium <?php echo $i == $page ? 'bg-[#03A6A1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'; ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                <?php endfor; ?>
+                                
+                                <!-- Tombol Next -->
+                                <a href="?page=<?php echo min($total_pages, $page + 1); ?>#riwayat" 
+                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                    Selanjutnya &raquo;
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 <?php else: ?>
                     <div class="text-center py-8">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -643,6 +728,29 @@ $gejala_options = $stmt->fetchAll();
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Reset form ketika halaman dimuat (setelah refresh/submit)
+        const resetFormOnLoad = () => {
+            const form = document.getElementById('diagnosisForm');
+            if (form) {
+                // Reset semua checkbox
+                const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Reset counter
+                const selectedCount = document.getElementById('selectedCount');
+                if (selectedCount) {
+                    selectedCount.textContent = '0';
+                }
+            }
+        };
+        
+        // Jalankan reset jika halaman dimuat dari cache (setelah form submit)
+        if (window.performance && window.performance.navigation.type === 1) {
+            resetFormOnLoad();
+        }
+        
         const form = document.getElementById('diagnosisForm');
         const submitButton = form.querySelector('button[type="submit"]');
         const checkboxes = document.querySelectorAll('input[name="gejala[]"]');
@@ -775,21 +883,6 @@ $gejala_options = $stmt->fetchAll();
     document.addEventListener('DOMContentLoaded', function() {
         const notification = document.querySelector('.fade-in');
         if (notification && notification.textContent.includes('Diagnosa berhasil')) {
-            // Add close button
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.className = 'absolute top-2 right-2 text-xl font-bold hover:opacity-75';
-            closeBtn.onclick = function() {
-                notification.style.opacity = '0';
-                setTimeout(() => notification.remove(), 200);
-            };
-            
-            // Make notification relative if not already
-            if (!notification.style.position) {
-                notification.style.position = 'relative';
-            }
-            notification.appendChild(closeBtn);
-            
             // Auto hide after 8 seconds (lebih lama karena ada tombol download)
             setTimeout(function() {
                 notification.style.transition = 'opacity 0.5s ease-out';
