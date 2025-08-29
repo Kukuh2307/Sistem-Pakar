@@ -301,7 +301,7 @@ $gejala_options = $stmt->fetchAll();
                     <h1 class="text-xl font-semibold text-gray-800">Dashboard Sistem Pakar</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-gray-700">Halo, <?php echo htmlspecialchars($user['username']); ?>!</span>
+                    <span class="text-gray-700 hidden md:block">Halo, <?php echo htmlspecialchars($user['username']); ?>!</span>
                     <a href="logout.php" class="bg-[#FF4F0F] text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
                         Logout
                     </a>
@@ -594,8 +594,8 @@ $gejala_options = $stmt->fetchAll();
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
-                                                    class="text-blue-600 hover:text-blue-900 inline-flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    class="bg-[#065084] text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium flex items-center justify-center">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                 </svg>
