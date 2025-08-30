@@ -23,17 +23,65 @@ if (!$user_data || empty($hasil_diagnosa)) {
     die("Data tidak lengkap untuk membuat laporan.");
 }
 
-// --- PENGOLAHAN DATA UNTUK SURAT ---
+// --- FUNGSI BANTU UNTUK FORMAT TANGGAL BAHASA INDONESIA ---
 
-// 1. Generate Nomor Surat Otomatis (Contoh: 001/BK-UNP/VIII/2025)
 function getRomanMonth($month) {
     $romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
     return $romans[$month - 1];
 }
+
+function formatTanggalIndonesia($tanggal) {
+    // Array nama bulan dalam bahasa Indonesia
+    $nama_bulan = array(
+        1 => 'Januari',
+        2 => 'Februari',
+        3 => 'Maret',
+        4 => 'April',
+        5 => 'Mei',
+        6 => 'Juni',
+        7 => 'Juli',
+        8 => 'Agustus',
+        9 => 'September',
+        10 => 'Oktober',
+        11 => 'November',
+        12 => 'Desember'
+    );
+    
+    // Ubah string tanggal ke timestamp
+    $timestamp = strtotime($tanggal);
+    
+    // Format tanggal: tanggal bulan tahun (contoh: 15 Agustus 2023)
+    $tanggal_format = date('d', $timestamp);
+    $bulan = $nama_bulan[date('n', $timestamp)];
+    $tahun = date('Y', $timestamp);
+    
+    return $tanggal_format . ' ' . $bulan . ' ' . $tahun;
+}
+
+function getHariIniIndonesia() {
+    // Array nama hari dalam bahasa Indonesia
+    $nama_hari = array(
+        'Minggu',
+        'Senin',
+        'Selasa',
+        'Rabu',
+        'Kamis',
+        'Jumat',
+        'Sabtu'
+    );
+    
+    $hari_ini = $nama_hari[date('w')];
+    $tanggal_hari_ini = formatTanggalIndonesia(date('Y-m-d'));
+    
+    return $hari_ini . ', ' . $tanggal_hari_ini;
+}
+
+// --- PENGOLAHAN DATA UNTUK SURAT ---
+
+// 1. Generate Nomor Surat Otomatis (Contoh: 001/BK-UNP/VIII/2025)
 $nomor_surat = sprintf("%03d/BK-UNP/%s/%d", $user_data['id'], getRomanMonth(date('n')), date('Y'));
 
 // 2. Ambil Rekomendasi dari hasil CF tertinggi
-// Ambil semua rekomendasi dari hasil diagnosa
 $rekomendasi = [];
 foreach ($hasil_diagnosa as $hasil) {
     if (!empty($hasil['solusi'])) {
@@ -63,6 +111,9 @@ function imageToBase64($path) {
 $kop_surat_base64 = imageToBase64('img/kop_surat.png');
 $tanda_tangan_base64 = imageToBase64('img/tanda_tangan.png');
 
+// Format tanggal lahir user ke bahasa Indonesia
+$tanggal_lahir_indonesia = formatTanggalIndonesia($user_data['tanggal_lahir']);
+$tanggal_surat_indonesia = getHariIniIndonesia();
 
 // --- PEMBUATAN KONTEN HTML UNTUK PDF ---
 
@@ -188,7 +239,7 @@ $html = '
             <tr>
                 <td>Tanggal Lahir</td>
                 <td>:</td>
-                <td>' . date('d F Y', strtotime($user_data['tanggal_lahir'])) . '</td>
+                <td>' . $tanggal_lahir_indonesia . '</td>
             </tr>
              <tr>
                 <td>Sekolah</td>
@@ -202,7 +253,7 @@ $html = '
             </tr>
         </table>
         
-        <p>Telah dilakukan tes assasement sederhana terkait penggunaan dan potensi kecanduan HP pada tanggal <br> ' . date('d F Y') . ' dengan hasil sebagai berikut:</p>
+        <p>Telah dilakukan tes assasement sederhana terkait penggunaan dan potensi kecanduan HP pada tanggal <br> ' . $tanggal_surat_indonesia . ' dengan hasil sebagai berikut:</p>
         
         <div class="section-title"><strong>Gejala yang teramati:</strong></div>
         <ul class="list">';
@@ -236,7 +287,7 @@ $html .= '
     <p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
 
     <div class="tanda-tangan">
-        <p>Kediri, ' . date('d F Y') . '</p>
+        <p>Kediri, ' . $tanggal_surat_indonesia . '</p>
         <p>Mengetahui,</p>
         ' . ($tanda_tangan_base64 ? '<img src="' . $tanda_tangan_base64 . '" alt="Tanda Tangan" class="tanda-tangan-img">' : '<br><br><br>') . '
         <p style="margin-top: -22px;"><strong>Dr. Vivi Ratnawati, S.Pd., M. Psi.</strong></p>
@@ -258,16 +309,8 @@ $dompdf->render();
 
 $filename = "laporan_assesment_" . strtolower(str_replace(' ', '_', $user_data['nama_lengkap'])) . ".pdf";
 
-// --- OUTPUT KE BROWSER ---
-
-// Opsi 1: Tampilkan PDF di browser (preview). Pengguna bisa download manual dari preview.
-// $dompdf->stream($filename, ["Attachment" => false]);
-
-
-// Opsi 2: Langsung download file PDF tanpa preview.
-// Untuk mengaktifkan, hapus komentar pada baris di bawah ini dan berikan komentar pada baris di atas.
+// --- OPSI SIMPLE: LANGSUNG DOWNLOAD FILE PDF ---
 $dompdf->stream($filename, ["Attachment" => true]);
-
 
 exit;
 ?>
