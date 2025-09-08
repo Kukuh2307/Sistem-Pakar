@@ -176,8 +176,9 @@ $html = '
         }
         .tanda-tangan-img {
             margin-top: -10px;
-            width: 200px;
+            width: 125px;
             height: 80px;
+            margin-left: 30px
         }
     </style>
 </head>
@@ -310,7 +311,7 @@ $dompdf->render();
 $filename = "laporan_assesment_" . strtolower(str_replace(' ', '_', $user_data['nama_lengkap'])) . ".pdf";
 
 // --- OPSI SIMPLE: LANGSUNG DOWNLOAD FILE PDF ---
-$dompdf->stream($filename, ["Attachment" => true]);
+$dompdf->stream($filename, ["Attachment" => false]);
 
 exit;
 ?>
