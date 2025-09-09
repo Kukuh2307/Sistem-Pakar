@@ -66,7 +66,7 @@ $baseUrl = "index.php?page=laporan";
 </head>
 <body class="bg-gray-100">
 
-<div class="bg-white rounded-xl shadow m-6">
+<div class="bg-white rounded-xl shadow mx-3 my-2">
   <div class="p-4 border-b bg-gradient-to-r from-teal-50 to-teal-100 flex flex-col md:flex-row md:items-center md:justify-between">
     <h2 class="text-lg font-semibold text-teal-700"><i class="fas fa-clipboard-list mr-2"></i>Daftar Laporan Diagnosa Siswa</h2>
     <div class="flex items-center space-x-4 mt-3 md:mt-0">
@@ -118,11 +118,36 @@ $baseUrl = "index.php?page=laporan";
             ?>
           <span class="diagnosa-text"><?php echo $result; ?></span></td>
           <td class="py-3 px-4">
-            <a href="get_detail.php?id=<?php echo $row['id']; ?>" class="px-2 py-1 bg-[#065084] text-white rounded text-sm">Detail</a>
+            <button href="<?php echo $base_url; ?>/report.php?id=<?php echo $row['id']; ?>" class="px-2 py-1 bg-[#065084] text-white rounded text-sm">Detail</button>
             <?php if ($row['pdf_filename']): ?>
-              <a href="downloads/<?php echo htmlspecialchars($row['pdf_filename']); ?>" target="_blank" class="px-2 py-1 bg-teal-600 text-white rounded text-sm">PDF</a>
+              <!-- Form untuk generate PDF real-time -->
+              <form action="<?php echo base_url('report.php'); ?>" method="POST" target="_blank" class="inline-block">
+                <?php
+                // Ambil data user lengkap untuk dikirim ke report.php
+                $user_query = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+                $user_query->execute([$row['user_id']]);
+                $user_data = $user_query->fetch(PDO::FETCH_ASSOC);
+                
+                // Decode data gejala dan hasil diagnosa dari JSON
+                $gejala_terpilih = json_decode($row['gejala_terpilih'], true);
+                $hasil_diagnosa = json_decode($row['hasil_diagnosa'], true);
+                ?>
+                
+                <!-- Data user (harus sama dengan dashboard.php) -->
+                <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user_data)); ?>">
+                
+                <!-- Data gejala (harus sama dengan dashboard.php) -->
+                <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih)); ?>">
+                
+                <!-- Data hasil diagnosa (harus sama dengan dashboard.php) -->
+                <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
+                
+                <button type="submit" class="px-2 py-1 bg-teal-600 text-white rounded text-sm">
+                  PDF
+                </button>
+              </form>
             <?php endif; ?>
-          </td>
+          </td> 
         </tr>
       <?php endforeach; endif; ?>
       </tbody>
