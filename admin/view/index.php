@@ -32,8 +32,9 @@ $current_page = $page;
       <!-- Sidebar -->
       <aside id="sidebar" 
         class="bg-white w-64 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 md:relative md:block shadow-lg transition-transform duration-300 ease-in-out">
-        <div class="p-4 space-y-4">
+        <div class="p-4 space-y-4 flex flex-col justify-between h-full">
           <?php include __DIR__ . '/partials/sidebar.php'; ?>
+          <a href="<?php echo base_url('admin/view/logout.php') ?>" class="block px-3 py-2 hover:bg-teal-100 text-gray-700 border-t-4 border-gray-400 <?php echo ($current_page == 'logout') ? 'bg-teal-100 font-medium' : ''; ?>">Logout</a>
         </div>
       </aside>
 

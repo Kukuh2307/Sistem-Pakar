@@ -187,7 +187,7 @@
               </button>
               <?php if ($row['pdf_filename']): ?>
                 <!-- Form untuk generate PDF real-time -->
-                <form action="<?php echo $base_url; ?>/sistem_pakar/report.php" method="POST" target="_blank" class="inline-block">
+                <form action="<?php echo base_url('report.php') ?>" method="POST" target="_blank" class="inline-block">
                   <?php
                   // Buat data user manual berdasarkan informasi yang tersedia
                   $user_data = [
@@ -269,7 +269,7 @@
               <i class="fas fa-info-circle mr-1"></i> Detail
             </button>
             <?php if ($row['pdf_filename']): ?>
-              <form action="<?php echo $base_url; ?>/sistem_pakar/report.php" method="POST" target="_blank" class="flex-1">
+              <form action="<?php echo base_url('report.php') ?>" method="POST" target="_blank" class="flex-1">
                 <?php
                 $user_data = [
                   'nama_lengkap' => $row['nama_lengkap'],

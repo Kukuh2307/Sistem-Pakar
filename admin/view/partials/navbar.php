@@ -9,7 +9,4 @@
       </button>
       <span class="font-bold text-lg">Admin Dashboard</span>
     </div>
-    <div>
-      <a href="<?php echo base_url('admin/view/logout.php') ?>" class="bg-[#FF4F0F] text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">Logout</a>
-    </div>
   </nav>
