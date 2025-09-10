@@ -63,7 +63,7 @@
   }
 
   // Base URL untuk pagination (tetap di menu laporan)
-  $baseUrl = "index.php?page=laporan";
+  $baseUrl = "container.php?page=laporan";
   ?>
   <!DOCTYPE html>
   <html lang="id">

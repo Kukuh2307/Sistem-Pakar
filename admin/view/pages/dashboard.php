@@ -70,7 +70,7 @@
   }
 
   // Base URL untuk pagination (tetap di menu laporan)
-  $baseUrl = "index.php?page=dashboard";
+  $baseUrl = "container.php?page=dashboard";
   ?>
   <!DOCTYPE html>
   <html lang="id">

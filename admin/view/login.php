@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($username === $admin_username && password_verify($password, $admin_password)) {
             $_SESSION['admin_logged_in'] = true;
             $_SESSION['admin_username'] = $admin_username;
-            redirect('index.php');
+            redirect('container.php');
         } else {
             $error = 'Username atau password salah!';
         }
