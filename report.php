@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'config.php';
-requireAuth();
+requireAdmin();
 
 // Panggil library Dompdf
 require_once 'vendor/autoload.php';
