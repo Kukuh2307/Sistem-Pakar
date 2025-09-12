@@ -158,10 +158,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <div>
                         <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <input type="text" id="status" name="status" 
-                               value="<?php echo htmlspecialchars($_POST['status'] ?? ''); ?>"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
-                               placeholder="Masukkan Status Anda" required>
+                        <select id="status" name="status" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
+                                required>
+                            <option value="">Pilih status</option>
+                            <option value="Siswa Kelas 1" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 1') ? 'selected' : ''; ?>>Siswa Kelas 1</option>
+                            <option value="Siswa Kelas 2" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 2') ? 'selected' : ''; ?>>Siswa Kelas 2</option>
+                            <option value="Siswa Kelas 3" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 3') ? 'selected' : ''; ?>>Siswa Kelas 3</option>
+                            <option value="Siswa Kelas 4" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 4') ? 'selected' : ''; ?>>Siswa Kelas 4</option>
+                            <option value="Siswa Kelas 5" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 5') ? 'selected' : ''; ?>>Siswa Kelas 5</option>
+                            <option value="Siswa Kelas 6" <?php echo (($_POST['status'] ?? '') == 'Siswa Kelas 6') ? 'selected' : ''; ?>>Siswa Kelas 6</option>
+                        </select>
                     </div>
                     
                     <div>
