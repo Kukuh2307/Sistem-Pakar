@@ -182,7 +182,11 @@ try {
     <h3 class="text-lg mb-4">Edit Data Penyakit</h3>
     <form method="POST">
       <input type="hidden" name="id_penyakit" id="edit_id">
-      <input type="text" name="kategori" id="edit_kategori" required class="w-full mb-3 border p-2 rounded">
+      <select name="kategori" required class="w-full mb-3 border p-2 rounded" id="edit_kategori">
+        <option value="Pemakaian HP Berlebihan Ringan">Ringan</option>
+        <option value="Pemakaian HP Berlebihan Sedang">Sedang</option>
+        <option value="Pemakaian HP Berlebihan Berat">Berat</option>
+      </select>
       <textarea name="rekomendasi" id="edit_rekomendasi" rows="3" required class="w-full mb-3 border p-2 rounded"></textarea>
       <div class="flex justify-end space-x-2">
         <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 rounded">Batal</button>
