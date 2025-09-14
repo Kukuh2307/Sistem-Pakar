@@ -6,7 +6,7 @@ requireAdmin();
 $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
 // Validasi halaman yang diizinkan
-$allowed_pages = ['dashboard', 'laporan', 'pengaturan'];
+$allowed_pages = ['dashboard', 'laporan', 'diagnosa', 'pengaturan'];
 if (!in_array($page, $allowed_pages)) {
     $page = 'dashboard';
 }
@@ -34,7 +34,7 @@ $current_page = $page;
         class="bg-white w-64 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 md:relative md:block shadow-lg transition-transform duration-300 ease-in-out">
         <div class="p-4 space-y-4 flex flex-col justify-between h-full">
           <?php include __DIR__ . '/partials/sidebar.php'; ?>
-          <a href="<?php echo base_url('admin/view/logout.php') ?>" class="block px-3 py-2 hover:bg-teal-100 text-gray-700 border-t-4 border-gray-400 <?php echo ($current_page == 'logout') ? 'bg-teal-100 font-medium' : ''; ?>">Logout</a>
+          <a href="<?php echo base_url('admin/view/logout.php') ?>" class="block px-3 py-2 hover:bg-teal-100 text-gray-700 border-t-4 border-teal-600 <?php echo ($current_page == 'logout') ? 'bg-teal-100 font-medium' : ''; ?>">Logout</a>
         </div>
       </aside>
 
@@ -50,6 +50,9 @@ $current_page = $page;
                   break;
               case 'laporan':
                   include 'pages/laporan.php';
+                  break;
+              case 'diagnosa':
+                  include 'pages/diagnosa.php';
                   break;
               case 'pengaturan':
                   include 'pages/pengaturan.php';
