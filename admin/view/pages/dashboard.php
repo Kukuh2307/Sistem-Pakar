@@ -28,12 +28,11 @@
       $query = "
         SELECT 
           hd.id,
-          u.nama_lengkap,
           u.username,
-          u.jenis_kelamin,
-          u.umur,
-          u.tanggal_lahir,
-          u.alamat,
+          hd.nama_lengkap,
+          hd.jenis_kelamin,
+          hd.tanggal_lahir,
+          hd.alamat,
           hd.tanggal,
           hd.gejala_terpilih,
           hd.hasil_diagnosa,
@@ -215,31 +214,7 @@
               <?php if ($row['pdf_filename']): ?>
                 <!-- Form untuk generate PDF real-time -->
                 <form action="<?php echo base_url('report.php') ?>" method="POST" target="_blank" class="inline-block">
-                  <?php
-                  // Buat data user manual berdasarkan informasi yang tersedia
-                  $user_data = [
-                    'nama_lengkap' => $row['nama_lengkap'],
-                    'username' => $row['username'],
-                    'jenis_kelamin' => $row['jenis_kelamin'],
-                    'umur' => $row['umur'],
-                    'tanggal_lahir' => $row['tanggal_lahir'],
-                    'alamat' => $row['alamat']
-                  ];
-                  
-                  // Decode data gejala dan hasil diagnosa dari JSON
-                  $gejala_terpilih = json_decode($row['gejala_terpilih'], true);
-                  $hasil_diagnosa = json_decode($row['hasil_diagnosa'], true);
-                  ?>
-                  
-                  <!-- Data user -->
-                  <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user_data)); ?>">
-                  
-                  <!-- Data gejala -->
-                  <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih)); ?>">
-                  
-                  <!-- Data hasil diagnosa -->
-                  <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
-                  
+                  <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['id']); ?>">
                   <button type="submit" class="px-2 py-1 bg-teal-600 text-white rounded text-sm mt-1 md:mt-0">
                     PDF
                   </button>
@@ -297,24 +272,7 @@
             </button>
             <?php if ($row['pdf_filename']): ?>
               <form action="<?php echo base_url('report.php') ?>" method="POST" target="_blank" class="flex-1">
-                <?php
-                $user_data = [
-                  'nama_lengkap' => $row['nama_lengkap'],
-                  'username' => $row['username'],
-                  'jenis_kelamin' => $row['jenis_kelamin'],
-                  'umur' => $row['umur'],
-                  'tanggal_lahir' => $row['tanggal_lahir'],
-                  'alamat' => $row['alamat']
-                ];
-                
-                $gejala_terpilih = json_decode($row['gejala_terpilih'], true);
-                $hasil_diagnosa = json_decode($row['hasil_diagnosa'], true);
-                ?>
-                
-                <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user_data)); ?>">
-                <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih)); ?>">
-                <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
-                
+                <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['id']); ?>">
                 <button type="submit" class="w-full px-3 py-2 bg-teal-600 text-white rounded text-sm">
                   <i class="fas fa-file-pdf mr-1"></i> PDF
                 </button>
