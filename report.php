@@ -200,6 +200,6 @@ $dompdf->render();
 
 $filename = "laporan_assesment_" . strtolower(str_replace(' ', '_', $user_data['nama_lengkap'])) . ".pdf";
 
-$dompdf->stream($filename, ["Attachment" => false]);
+$dompdf->stream($filename, ["Attachment" => true]);
 exit;
 ?>

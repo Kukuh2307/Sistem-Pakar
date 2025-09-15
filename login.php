@@ -84,12 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </button>
             </form>
             
-            <div class="text-center my-6">
+            <!-- <div class="text-center my-6">
                 <p class="text-gray-600">
                     Belum punya akun? 
                     <a href="register.php" class="text-teal-600 hover:text-teal-700 font-medium">Daftar di sini</a>
                 </p>
-            </div>
+            </div> -->
             <h2 class="text-md font-medium mt-6 text-center mb-4">Hibah PKM-Kemitraan Kemendikbudristek <br>Universitas Nusantara PGRI Kediri<br>2025</h2>
         </div>
     </div>

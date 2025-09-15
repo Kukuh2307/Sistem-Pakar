@@ -6,7 +6,7 @@ requireAdmin();
 $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
 // Validasi halaman yang diizinkan
-$allowed_pages = ['dashboard', 'laporan', 'diagnosa', 'pengaturan'];
+$allowed_pages = ['dashboard', 'laporan', 'diagnosa', 'guru', 'pengaturan'];
 if (!in_array($page, $allowed_pages)) {
     $page = 'dashboard';
 }
@@ -56,6 +56,9 @@ $current_page = $page;
                   break;
               case 'diagnosa':
                   include 'pages/diagnosa.php';
+                  break;
+              case 'guru':
+                  include 'pages/guru.php';
                   break;
               case 'pengaturan':
                   include 'pages/pengaturan.php';
