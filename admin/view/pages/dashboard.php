@@ -6,7 +6,7 @@
   try {
     // Ambil total siswa
     $user = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-    $total_siswa = $user - 1; // Kurangi 1 untuk admin
+    $total_guru = $user - 1; // Kurangi 1 untuk admin
         
     // Ambil total laporan
     $total_laporan = $pdo->query("SELECT COUNT(*) FROM history_diagnosa")->fetchColumn();
@@ -133,8 +133,8 @@
                 <div class="flex items-center">
                     <i class="fas fa-users text-3xl text-teal-600 mr-4"></i>
                     <div>
-                        <h3 class="text-gray-500 text-sm">Total Siswa Terdaftar</h3>
-                        <p class="text-2xl font-bold text-teal-600" id="total-siswa"><?php echo $total_siswa; ?></p>
+                        <h3 class="text-gray-500 text-sm">Total Guru Terdaftar</h3>
+                        <p class="text-2xl font-bold text-teal-600" id="total-siswa"><?php echo $total_guru; ?></p>
                     </div>
                 </div>
             </div>
