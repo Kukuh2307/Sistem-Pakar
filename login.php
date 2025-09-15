@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </form>
 
     <p class="text-md font-medium mt-10 text-center">
-      Hibah PKM-Kemitraan Kemendikbudristek <br> Universitas PGRI Kediri <br> 2025
+      Hibah PKM-Kemitraan Kemendikbudristek <br> Universitas Nusantara PGRI Kediri <br> 2025
     </p>
   </div>
 </div>

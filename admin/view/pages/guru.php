@@ -116,7 +116,7 @@ $totalData = $pdo->query($countQuery)->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages = max(1, ceil($totalData/$limit));
 
 // $query = "SELECT * FROM users WHERE username!='admin' ORDER BY id DESC LIMIT $limit OFFSET $offset";
-$query = "SELECT * FROM users ORDER BY id DESC LIMIT $limit OFFSET $offset";
+$query = "SELECT * FROM users ORDER BY id ASC LIMIT $limit OFFSET $offset";
 $stmt = $pdo->prepare($query);
 $stmt->execute();
 $user_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -221,7 +221,9 @@ function formatTanggal($tgl){ return date('d/m/Y', strtotime($tgl)); }
       <div class="flex space-x-2 mt-3">
         <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($row)); ?>)" 
                 class="flex-1 px-3 py-2 bg-yellow-600 text-white rounded text-sm">Edit</button>
-        <button onclick="openDeleteModal('<?php echo $row['id']; ?>')" 
+        <?php if($row['username']=='admin'): ?><button onclick="openResetModal('<?php echo $row['id']; ?>')" 
+                class="flex-1 px-3 py-2 bg-teal-600 text-white rounded text-sm">Reset Password</button><?php endif; ?>
+        <button style="<?php if($row['username']=='admin') : ?>display:none;<?php endif; ?>" onclick="openDeleteModal('<?php echo $row['id']; ?>')" 
                 class="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm">Hapus</button>
       </div>
     </div>
