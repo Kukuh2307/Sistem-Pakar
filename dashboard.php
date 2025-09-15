@@ -24,6 +24,7 @@ $total_pages = 1;
 // Proses diagnosa dengan algoritma Certainty Factor
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'diagnosa') {
     error_log('POST data received: ' . print_r($_POST, true));
+
     
     // Lakukan diagnosa jika ada gejala yang dipilih
     if (!empty($_POST['gejala'])) {
@@ -133,11 +134,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             
             try {
                 // Generate filename PDF yang unik
-                $pdf_filename = 'diagnosa_report_' . $_SESSION['user_id'] . '_' . date('Ymd_His') . '.pdf';
+                $pdf_filename = 'diagnosa_report_' . $_POST['nama_lengkap'] . '_' . date('Ymd_His') . '.pdf';
                 
                 // Simpan ke database dengan filename PDF
-                $stmt = $pdo->prepare("INSERT INTO history_diagnosa (user_id, tanggal, gejala_terpilih, hasil_diagnosa, pdf_filename) VALUES (?, NOW(), ?, ?, ?)");
-                $stmt->execute([$_SESSION['user_id'], $gejala_json, $hasil_json, $pdf_filename]);
+                $stmt = $pdo->prepare("
+                    INSERT INTO history_diagnosa 
+                        (user_id, nik, nama_lengkap, tanggal_lahir, jenis_kelamin, status, alamat, tanggal, gejala_terpilih, hasil_diagnosa, pdf_filename) 
+                    VALUES 
+                        (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $_SESSION['user_id'],
+                    $_POST['nik'],
+                    $_POST['nama_lengkap'],
+                    $_POST['tanggal_lahir'],
+                    $_POST['jenis_kelamin'],
+                    $_POST['status'],
+                    $_POST['alamat'],
+                    $gejala_json,
+                    $hasil_json,
+                    $pdf_filename
+                ]);
+
                 $last_history_id = $pdo->lastInsertId();
                 
                 // Generate PDF
@@ -315,6 +333,7 @@ $end_item = min($offset + $limit, $total_data);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Sistem Pakar Diagnosa</title>
+    <link rel="shortcut icon" type="image/x-icon" href="img/unp.jpeg">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fade-in {
@@ -338,7 +357,7 @@ $end_item = min($offset + $limit, $total_data);
                     <h1 class="text-xl font-semibold text-gray-800">Dashboard Sistem Pakar</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-gray-700 hidden md:block">Halo, <?php echo htmlspecialchars($user['username']); ?>!</span>
+                    <!-- <span class="text-gray-700 hidden md:block">Halo, <?php echo htmlspecialchars($user['username']); ?>!</span> -->
                     <a href="logout.php" class="bg-[#FF4F0F] text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
                         Logout
                     </a>
@@ -368,7 +387,7 @@ $end_item = min($offset + $limit, $total_data);
             </div>
         <?php endif; ?>
         
-        <!-- User Information Cards -->
+        <!-- User Information Cards
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div class="bg-white overflow-hidden shadow-lg rounded-lg">
                 <div class="bg-teal-600 px-6 py-4">
@@ -411,7 +430,7 @@ $end_item = min($offset + $limit, $total_data);
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
         
         <!-- Form Diagnosa -->
         <div class="bg-white shadow-lg rounded-lg mb-8">
@@ -420,42 +439,116 @@ $end_item = min($offset + $limit, $total_data);
                 <p class="text-indigo-100 text-sm">Pilih gejala yang dialami siswa untuk mendapatkan diagnosa penggunaan HP berlebihan menggunakan metode Certainty Factor</p>
             </div>
             <div class="px-6 py-6">
-                <form method="POST" class="space-y-4" id="diagnosisForm">
-                    <input type="hidden" name="action" value="diagnosa">
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <?php if (!empty($gejala_options)): ?>
-                            <?php foreach ($gejala_options as $gejala): ?>
-                                <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <input type="checkbox" name="gejala[]" value="<?php echo $gejala['id_gejala']; ?>" 
-                                           class=" text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-1">
-                                    <span class="ml-3 text-gray-700 font-medium leading-relaxed"><?php echo htmlspecialchars($gejala['nama_gejala']); ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="text-center py-8">
-                                <p class="text-gray-500">Tidak ada data gejala tersedia.</p>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <div class="pt-4 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-600">
-                                <span id="selectedCount">0</span> gejala dipilih
-                            </div>
-                            <button type="submit" 
-                                    class="bg-[#065084] text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium">
-                                <span class="inline-flex items-center">
-                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    Lakukan Diagnosa
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                <form method="POST" class="space-y-6" id="diagnosisForm">
+    <input type="hidden" name="action" value="diagnosa">
+
+    <!-- Input Data Siswa -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- NIK -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">NIK</label>
+            <input type="text" name="nik" maxlength="16" pattern="\d{16}" required
+                   placeholder="Masukkan 16 digit NIK"
+                   class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+        </div>
+
+        <!-- Nama Lengkap -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Nama Lengkap</label>
+            <input type="text" name="nama_lengkap" required
+                   placeholder="Masukkan nama lengkap siswa"
+                   class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+        </div>
+
+        <!-- Email -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Email</label>
+            <input type="email" name="email" required
+                   placeholder="Masukkan email siswa"
+                   class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+        </div>
+
+        <!-- Tanggal Lahir -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Tanggal Lahir</label>
+            <input type="date" name="tanggal_lahir" required
+                   class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+        </div>
+
+        <!-- Jenis Kelamin -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Jenis Kelamin</label>
+            <select name="jenis_kelamin" required
+                    class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+                <option value="">-- Pilih --</option>
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+            </select>
+        </div>
+
+        <!-- Status -->
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Status</label>
+            <select name="status" required
+                    class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2">
+                <option value="">-- Pilih --</option>
+                <option value="Siswa Kelas 1">Siswa Kelas 1</option>
+                <option value="Siswa Kelas 2">Siswa Kelas 2</option>
+                <option value="Siswa Kelas 3">Siswa Kelas 3</option>
+                <option value="Siswa Kelas 4">Siswa Kelas 4</option>
+                <option value="Siswa Kelas 5">Siswa Kelas 5</option>
+                <option value="Siswa Kelas 6">Siswa Kelas 6</option>
+            </select>
+        </div>
+
+        <!-- Alamat -->
+        <div class="sm:col-span-2">
+            <label class="block text-gray-700 font-medium mb-1">Alamat</label>
+            <textarea name="alamat" rows="3" required
+                      placeholder="Masukkan alamat lengkap siswa"
+                      class="w-full rounded-lg shadow-sm border-teal-600 border-2 px-3 py-2"></textarea>
+        </div>
+    </div>
+
+    <!-- Checklist Gejala -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <?php if (!empty($gejala_options)): ?>
+            <?php foreach ($gejala_options as $gejala): ?>  
+                <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                    <input type="checkbox" name="gejala[]" value="<?php echo $gejala['id_gejala']; ?>" 
+                           class="text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-1">
+                    <span class="ml-3 text-gray-700 font-medium leading-relaxed">
+                        <?php echo htmlspecialchars($gejala['nama_gejala']); ?>
+                    </span>
+                </label>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="text-center py-8 sm:col-span-3">
+                <p class="text-gray-500">Tidak ada data gejala tersedia.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Submit -->
+    <div class="pt-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+                <span id="selectedCount">0</span> gejala dipilih
+            </div>
+            <button type="submit" 
+                    class="bg-[#065084] text-white px-8 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium">
+                <span class="inline-flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Lakukan Diagnosa
+                </span>
+            </button>
+        </div>
+    </div>
+</form>
+
             </div>
         </div>
 
@@ -490,7 +583,7 @@ $end_item = min($offset + $limit, $total_data);
             </div>
             <div class="px-6 pt-4 border-b border-gray-200">
                 <form action="report.php" method="POST" target="_blank">
-                    <input type="hidden" name="user_data" value="<?php echo htmlspecialchars(json_encode($user)); ?>">
+                    <input type="hidden" name="id" value="<?php echo htmlspecialchars($last_history_id); ?>" class="hidden">
                     <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
                     <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
                     
@@ -596,113 +689,103 @@ $end_item = min($offset + $limit, $total_data);
         <?php endif; ?>
 
         <!-- History Diagnosa -->
-        <div id="riwayat" class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-            <div class="bg-teal-600 px-6 py-4">
-                <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
-                <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
+         <div id="riwayat" class="bg-white shadow-lg rounded-lg mb-8 fade-in">
+    <div class="bg-teal-600 px-6 py-4">
+        <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
+        <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
+    </div>
+    <div class="px-6 py-6">
+        <?php if (!empty($history_diagnosa)): ?>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php foreach ($history_diagnosa as $history): ?>
+                            <?php 
+                            $gejala_data = json_decode($history['gejala_terpilih'], true);
+                            $hasil_data = json_decode($history['hasil_diagnosa'], true);
+                            ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="text-gray-900"><?php echo date('d/m/Y', strtotime($history['tanggal'])); ?></div>
+                                    <div class="text-gray-500 text-xs"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
+                                </td>
+                                <td class="px-4 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($history['nama_lengkap']); ?></td>
+                                <td class="px-4 py-3"><?php echo htmlspecialchars($history['status']); ?></td>
+                                <td class="px-4 py-3"><?php echo is_array($gejala_data) ? count($gejala_data) : 0; ?> gejala</td>
+                                <td class="px-4 py-3">
+                                    <?php if (!empty($hasil_data) && is_array($hasil_data)): ?>
+                                        <span class="font-medium"><?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?></span>
+                                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
+                                            <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-red-100 text-red-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'); ?>">
+                                            <?php echo $hasil_data[0]['cf']; ?>%
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-gray-400">Tidak ada hasil</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="px-4 py-3 text-sm font-medium">
+                                    <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
+                                            class="bg-[#065084] text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs md:text-sm">
+                                        Detail
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-            <div class="px-6 py-6">
-                <?php if (!empty($history_diagnosa)): ?>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <?php foreach ($history_diagnosa as $index => $history): ?>
-                                    <?php 
-                                    $gejala_data = json_decode($history['gejala_terpilih'], true);
-                                    $hasil_data = json_decode($history['hasil_diagnosa'], true);
-                                    ?>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><?php echo date('d F Y', strtotime($history['tanggal'])); ?></div>
-                                            <div class="text-sm text-gray-500"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><?php echo is_array($gejala_data) ? count($gejala_data) : 0; ?> gejala</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                <?php if (!empty($hasil_data) && is_array($hasil_data)): ?>
-                                                    <?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?>
-                                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                          <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-red-100 text-red-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'); ?>">
-                                                        <?php echo $hasil_data[0]['cf']; ?>%
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="text-gray-400">Tidak ada hasil</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
-                                                    class="bg-[#065084] text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                                </svg>
-                                                Detail
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
 
-                    <!-- Pagination -->
-                    <?php if ($total_pages > 1): ?>
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-700 hidden sm:block">
-                                Menampilkan <?php echo $start_item; ?> - <?php echo $end_item; ?> dari <?php echo $total_data; ?> hasil
-                            </div>
-                            <div class="flex space-x-2">
-                                <!-- Tombol Previous -->
-                                <a href="?page=<?php echo max(1, $page - 1); ?>#riwayat" 
-                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page <= 1 ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                                    &laquo; Sebelumnya
-                                </a>
-                                
-                                <!-- Numbered pages -->
-                                <?php 
-                                $start_page = max(1, $page - 2);
-                                $end_page = min($total_pages, $page + 2);
-                                
-                                for ($i = $start_page; $i <= $end_page; $i++): 
-                                ?>
-                                    <a href="?page=<?php echo $i; ?>#riwayat" 
-                                       class="px-3 py-1 rounded-md text-sm font-medium <?php echo $i == $page ? 'bg-[#03A6A1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'; ?>">
-                                        <?php echo $i; ?>
-                                    </a>
-                                <?php endfor; ?>
-                                
-                                <!-- Tombol Next -->
-                                <a href="?page=<?php echo min($total_pages, $page + 1); ?>#riwayat" 
-                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                                    Selanjutnya &raquo;
-                                </a>
-                            </div>
-                        </div>
+            <!-- Pagination tetap seperti punya Anda -->
+            <?php if ($total_pages > 1): ?>
+            <div class="px-6 py-4 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700 hidden sm:block">
+                        Menampilkan <?php echo $start_item; ?> - <?php echo $end_item; ?> dari <?php echo $total_data; ?> hasil
                     </div>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <div class="text-center py-8">
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
-                        <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
+                    <div class="flex space-x-2">
+                        <a href="?page=<?php echo max(1, $page - 1); ?>#riwayat" 
+                           class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page <= 1 ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                            &laquo; Sebelumnya
+                        </a>
+                        <?php 
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        for ($i = $start_page; $i <= $end_page; $i++): ?>
+                            <a href="?page=<?php echo $i; ?>#riwayat" 
+                               class="px-3 py-1 rounded-md text-sm font-medium <?php echo $i == $page ? 'bg-[#03A6A1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+                        <a href="?page=<?php echo min($total_pages, $page + 1); ?>#riwayat" 
+                           class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                            Selanjutnya &raquo;
+                        </a>
                     </div>
-                <?php endif; ?>
+                </div>
             </div>
-        </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <div class="text-center py-8">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
+                <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
     </div>
 
     <!-- Modal untuk detail history -->
@@ -802,77 +885,94 @@ $end_item = min($offset + $limit, $total_data);
     });
 
     // Function to show detail modal
-    function showDetails(data) {
-        const modal = document.getElementById('detailModal');
-        const modalContent = document.getElementById('modalContent');
-        
-        const gejalaData = JSON.parse(data.gejala_terpilih);
-        const hasilData = JSON.parse(data.hasil_diagnosa);
-        
-        let content = `
-            <div class="space-y-6">
-                <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Informasi Diagnosa</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p><strong>Tanggal:</strong> ${new Date(data.tanggal).toLocaleDateString('id-ID', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })}</p>
-                        <p><strong>Jumlah Gejala:</strong> ${gejalaData.length} gejala</p>
-                    </div>
+function showDetails(data) {
+    const modal = document.getElementById('detailModal');
+    const modalContent = document.getElementById('modalContent');
+    
+    const gejalaData = JSON.parse(data.gejala_terpilih);
+    const hasilData = JSON.parse(data.hasil_diagnosa);
+    
+    let content = `
+        <div class="space-y-6">
+            <!-- Informasi Siswa -->
+            <div>
+                <h4 class="font-medium text-gray-900 mb-3">Informasi Siswa</h4>
+                <div class="bg-gray-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <p><strong>NIK:</strong> ${data.nik}</p>
+                    <p><strong>Nama:</strong> ${data.nama_lengkap}</p>
+                    <p><strong>Tanggal Lahir:</strong> ${data.tanggal_lahir}</p>
+                    <p><strong>Jenis Kelamin:</strong> ${data.jenis_kelamin}</p>
+                    <p><strong>Status:</strong> ${data.status}</p>
+                    <p class="md:col-span-2"><strong>Alamat:</strong> ${data.alamat}</p>
                 </div>
-                
-                <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Gejala yang Dipilih</h4>
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <ol class="list-decimal list-inside space-y-1">`;
-        
-        gejalaData.forEach(function(gejala) {
-            content += `<li class="text-sm">${gejala}</li>`;
-        });
-        
-        content += `
-                        </ol>
-                    </div>
+            </div>
+
+            <!-- Informasi Diagnosa -->
+            <div>
+                <h4 class="font-medium text-gray-900 mb-3">Informasi Diagnosa</h4>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p><strong>Tanggal:</strong> ${new Date(data.tanggal).toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}</p>
+                    <p><strong>Jumlah Gejala:</strong> ${gejalaData.length} gejala</p>
                 </div>
-                
-                <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Hasil Diagnosa</h4>
-                    <div class="space-y-4">`;
-        
-        hasilData.forEach(function(hasil, index) {
-            const cfColor = hasil.cf >= 70 ? 'text-red-600' : (hasil.cf >= 40 ? 'text-yellow-600' : 'text-green-600');
-            const borderColor = index === 0 ? 'border-red-500' : 'border-gray-300';
+            </div>
             
-            content += `
-                <div class="bg-gray-50 p-4 rounded-lg border-l-4 ${borderColor}">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <h5 class="font-semibold text-gray-800">${hasil.penyakit}</h5>
-                            ${index === 0 ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#FF4F0F] text-white mt-1">Diagnosa Utama</span>' : ''}
-                            <p class="text-sm text-gray-600 mt-2">Gejala cocok: ${hasil.jumlah_gejala_cocok} dari ${gejalaData.length}</p>
-                            ${hasil.solusi ? `<div class="mt-3 p-3 bg-white rounded border"><h6 class="font-medium text-sm">Rekomendasi:</h6><p class="text-sm text-gray-600 mt-1">${hasil.solusi}</p></div>` : ''}
-                        </div>
-                        <div class="text-right ml-4">
-                            <div class="text-2xl font-bold ${cfColor}">${hasil.cf}%</div>
-                            <div class="text-xs text-gray-500">Kepercayaan</div>
-                        </div>
-                    </div>
-                </div>`;
-        });
+            <!-- Gejala yang Dipilih -->
+            <div>
+                <h4 class="font-medium text-gray-900 mb-3">Gejala yang Dipilih</h4>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <ol class="list-decimal list-inside space-y-1">`;
+    
+    gejalaData.forEach(function(gejala) {
+        content += `<li class="text-sm">${gejala}</li>`;
+    });
+    
+    content += `
+                    </ol>
+                </div>
+            </div>
+            
+            <!-- Hasil Diagnosa -->
+            <div>
+                <h4 class="font-medium text-gray-900 mb-3">Hasil Diagnosa</h4>
+                <div class="space-y-4">`;
+    
+    hasilData.forEach(function(hasil, index) {
+        const cfColor = hasil.cf >= 70 ? 'text-red-600' : (hasil.cf >= 40 ? 'text-yellow-600' : 'text-green-600');
+        const borderColor = index === 0 ? 'border-red-500' : 'border-gray-300';
         
         content += `
+            <div class="bg-gray-50 p-4 rounded-lg border-l-4 ${borderColor}">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h5 class="font-semibold text-gray-800">${hasil.penyakit}</h5>
+                        ${index === 0 ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#FF4F0F] text-white mt-1">Diagnosa Utama</span>' : ''}
+                        <p class="text-sm text-gray-600 mt-2">Gejala cocok: ${hasil.jumlah_gejala_cocok} dari ${gejalaData.length}</p>
+                        ${hasil.solusi ? `<div class="mt-3 p-3 bg-white rounded border"><h6 class="font-medium text-sm">Rekomendasi:</h6><p class="text-sm text-gray-600 mt-1">${hasil.solusi}</p></div>` : ''}
+                    </div>
+                    <div class="text-right ml-4">
+                        <div class="text-2xl font-bold ${cfColor}">${hasil.cf}%</div>
+                        <div class="text-xs text-gray-500">Kepercayaan</div>
                     </div>
                 </div>
             </div>`;
-        
-        modalContent.innerHTML = content;
-        modal.classList.remove('hidden');
-    }
+    });
+    
+    content += `
+                </div>
+            </div>
+        </div>`;
+    
+    modalContent.innerHTML = content;
+    modal.classList.remove('hidden');
+}
+
 
     function closeModal() {
         const modal = document.getElementById('detailModal');
