@@ -91,6 +91,9 @@ $tanda_tangan_base64 = imageToBase64('img/tanda_tangan.png');
 $tanggal_lahir_indonesia = formatTanggalIndonesia($user_data['tanggal_lahir']);
 $tanggal_surat_indonesia = formatTanggalIndonesia(date('Y-m-d'));
 
+
+$footer_logo_base64 = imageToBase64('img/logo.jpeg'); 
+
 // --- Konten HTML ---
 $html = '
 <!DOCTYPE html>
@@ -98,7 +101,7 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <title>Laporan Hasil Assesment</title>
-        <link rel="shortcut icon" type="image/x-icon" href="img/unp.jpeg">
+    <link rel="shortcut icon" type="image/x-icon" href="img/unp.jpeg">
     <style>
         @page { margin: 0.5cm 1.5cm; }
         body { font-family: Times, "Times New Roman", serif; font-size: 12pt; line-height: 1.5; }
@@ -114,9 +117,25 @@ $html = '
         .list { padding-left: 20px; margin: 0; }
         .tanda-tangan { margin-top: 20px; width: 300px; margin-left: auto; text-align: left; z-index: 1; position: relative; }
         .tanda-tangan-img { margin-top: -30px; width: 200px; height: 80px; }
+        /* Footer */
+        .footer-logo { 
+            position: fixed; 
+            bottom: 5px; 
+            left: 0; 
+            right: 0; 
+            text-align: center; 
+        }
+        .footer-logo img { 
+            width: 150px; 
+            opacity: 0.8; 
+        }
     </style>
 </head>
 <body>
+    <!-- Footer Logo -->
+    <div class="footer-logo">
+        ' . ($footer_logo_base64 ? '<img src="' . $footer_logo_base64 . '" alt="Footer Logo">' : '') . '
+    </div>
     <div class="kop-surat" style="margin-top:-10px;">
         ' . ($kop_surat_base64 ? '<img src="' . $kop_surat_base64 . '" alt="Kop Surat">' : '<h1>UNIVERSITAS NUSANTARA PGRI KEDIRI</h1><p>FAKULTAS KEGURUAN DAN ILMU PENDIDIKAN</p>') . '
     </div>
@@ -161,6 +180,7 @@ $html .= '
         foreach ($hasil_diagnosa as $hasil) {
             $html .= '<li>' . htmlspecialchars($hasil['penyakit']) . ': <strong>' . $hasil['cf'] . '%</strong></li>';
         }
+        
 $html .= '
         </ul>
     </div>

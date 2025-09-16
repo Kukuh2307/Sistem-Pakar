@@ -582,7 +582,7 @@ $end_item = min($offset + $limit, $total_data);
                 <p class="text-green-100 text-sm">Berdasarkan <?php echo count($gejala_terpilih_names); ?> gejala yang dipilih, berikut adalah hasil diagnosa menggunakan metode Certainty Factor</p>
             </div>
             <div class="px-6 pt-4 border-b border-gray-200">
-                <form action="report.php" method="POST" target="_blank">
+                <!-- <form action="report.php" method="POST" target="_blank">
                     <input type="hidden" name="id" value="<?php echo htmlspecialchars($last_history_id); ?>" class="hidden">
                     <input type="hidden" name="gejala_terpilih" value="<?php echo htmlspecialchars(json_encode($gejala_terpilih_names)); ?>">
                     <input type="hidden" name="hasil_diagnosa" value="<?php echo htmlspecialchars(json_encode($hasil_diagnosa)); ?>">
@@ -595,7 +595,7 @@ $end_item = min($offset + $limit, $total_data);
                             Cetak Laporan Lengkap
                         </span>
                     </button>
-                </form>
+                </form> -->
             </div>
             <div class="px-6 py-6">
                 <div class="space-y-6">
@@ -689,104 +689,124 @@ $end_item = min($offset + $limit, $total_data);
         <?php endif; ?>
 
         <!-- History Diagnosa -->
-         <div id="riwayat" class="bg-white shadow-lg rounded-lg mb-8 fade-in">
-    <div class="bg-teal-600 px-6 py-4">
-        <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
-        <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
-    </div>
-    <div class="px-6 py-6">
-        <?php if (!empty($history_diagnosa)): ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <?php foreach ($history_diagnosa as $history): ?>
-                            <?php 
-                            $gejala_data = json_decode($history['gejala_terpilih'], true);
-                            $hasil_data = json_decode($history['hasil_diagnosa'], true);
-                            ?>
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="text-gray-900"><?php echo date('d/m/Y', strtotime($history['tanggal'])); ?></div>
-                                    <div class="text-gray-500 text-xs"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
-                                </td>
-                                <td class="px-4 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($history['nama_lengkap']); ?></td>
-                                <td class="px-4 py-3"><?php echo htmlspecialchars($history['status']); ?></td>
-                                <td class="px-4 py-3"><?php echo is_array($gejala_data) ? count($gejala_data) : 0; ?> gejala</td>
-                                <td class="px-4 py-3">
-                                    <?php if (!empty($hasil_data) && is_array($hasil_data)): ?>
-                                        <span class="font-medium"><?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?></span>
-                                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
-                                            <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-red-100 text-red-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'); ?>">
-                                            <?php echo $hasil_data[0]['cf']; ?>%
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="text-gray-400">Tidak ada hasil</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-4 py-3 text-sm font-medium">
-                                    <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
-                                            class="bg-[#065084] text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs md:text-sm">
-                                        Detail
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+<div id="riwayat" class="bg-white shadow-lg rounded-lg mb-8 fade-in">
+  <div class="bg-teal-600 px-6 py-4">
+    <h3 class="text-lg font-medium text-white">Riwayat Diagnosa</h3>
+    <p class="text-purple-100 text-sm">Berikut adalah history hasil diagnosa yang telah Anda lakukan</p>
+  </div>
+  <div class="px-6 py-6">
 
-            <!-- Pagination tetap seperti punya Anda -->
-            <?php if ($total_pages > 1): ?>
-            <div class="px-6 py-4 border-t border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-700 hidden sm:block">
-                        Menampilkan <?php echo $start_item; ?> - <?php echo $end_item; ?> dari <?php echo $total_data; ?> hasil
+    <?php if (!empty($history_diagnosa)): ?>
+      <!-- Search Bar -->
+      <div class="mb-4 flex items-center">
+        <input type="text" id="searchHistory" placeholder="Cari nama, status, atau hasil diagnosa..."
+               class="w-full sm:w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm border-teal-600 border-2"
+        >
+      </div>
+
+      <div class="overflow-x-auto">
+        <table id="historyTable" class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Jumlah Gejala</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hasil Diagnosa</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <?php foreach ($history_diagnosa as $history): ?>
+              <?php 
+              $gejala_data = json_decode($history['gejala_terpilih'], true);
+              $hasil_data = json_decode($history['hasil_diagnosa'], true);
+              ?>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="text-gray-900"><?php echo date('d/m/Y', strtotime($history['tanggal'])); ?></div>
+                  <div class="text-gray-500 text-xs"><?php echo date('H:i:s', strtotime($history['tanggal'])); ?></div>
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($history['nama_lengkap']); ?></td>
+                <td class="px-4 py-3"><?php echo htmlspecialchars($history['status']); ?></td>
+                <td class="px-4 py-3"><?php echo is_array($gejala_data) ? count($gejala_data) : 0; ?> gejala</td>
+                <td class="px-4 py-3">
+                  <?php if (!empty($hasil_data) && is_array($hasil_data)): ?>
+                    <span class="font-medium"><?php echo htmlspecialchars($hasil_data[0]['penyakit']); ?></span>
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
+                      <?php echo $hasil_data[0]['cf'] >= 70 ? 'bg-red-100 text-red-800' : ($hasil_data[0]['cf'] >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'); ?>">
+                      <?php echo $hasil_data[0]['cf']; ?>%
+                    </span>
+                  <?php else: ?>
+                    <span class="text-gray-400">Tidak ada hasil</span>
+                  <?php endif; ?>
+                </td>
+                <td class="px-4 py-3 text-sm font-medium">
+                  <button onclick="showDetails(<?php echo htmlspecialchars(json_encode($history)); ?>)" 
+                          class="bg-[#065084] text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs md:text-sm">
+                    Detail
+                  </button>
+                  <form action="report.php" method="POST" target="_blank" class="inline">
+                    <input type="hidden" name="id" value="<?php echo htmlspecialchars($history['id']); ?>">
+                    <button type="submit" class="bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs md:text-sm">
+                      PDF
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+        <!-- Pagination Info -->
+                             <?php if ($total_pages > 1): ?>
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700 hidden sm:block">
+                                Menampilkan <?php echo $start_item; ?> - <?php echo $end_item; ?> dari <?php echo $total_data; ?> hasil
+                            </div>
+                            <div class="flex space-x-2">
+                                <!-- Tombol Previous -->
+                                <a href="?page=<?php echo max(1, $page - 1); ?>#riwayat" 
+                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page <= 1 ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                    &laquo; Sebelumnya
+                                </a>
+                                
+                                <!-- Numbered pages -->
+                                <?php 
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                for ($i = $start_page; $i <= $end_page; $i++): 
+                                ?>
+                                    <a href="?page=<?php echo $i; ?>#riwayat" 
+                                       class="px-3 py-1 rounded-md text-sm font-medium <?php echo $i == $page ? 'bg-[#03A6A1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'; ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                <?php endfor; ?>
+                                
+                                <!-- Tombol Next -->
+                                <a href="?page=<?php echo min($total_pages, $page + 1); ?>#riwayat" 
+                                   class="px-3 py-1 flex items-center rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                    Selanjutnya &raquo;
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex space-x-2">
-                        <a href="?page=<?php echo max(1, $page - 1); ?>#riwayat" 
-                           class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page <= 1 ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                            &laquo; Sebelumnya
-                        </a>
-                        <?php 
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
-                        for ($i = $start_page; $i <= $end_page; $i++): ?>
-                            <a href="?page=<?php echo $i; ?>#riwayat" 
-                               class="px-3 py-1 rounded-md text-sm font-medium <?php echo $i == $page ? 'bg-[#03A6A1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
-                        <a href="?page=<?php echo min($total_pages, $page + 1); ?>#riwayat" 
-                           class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 <?php echo $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                            Selanjutnya &raquo;
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-        <?php else: ?>
-            <div class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
-                <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
-            </div>
-        <?php endif; ?>
-    </div>
+                    <?php endif; ?>
+    <?php else: ?>
+      <div class="text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada riwayat diagnosa</h3>
+        <p class="mt-1 text-sm text-gray-500">Hasil diagnosa Anda akan muncul di sini setelah melakukan tes.</p>
+      </div>
+    <?php endif; ?>
+  </div>
 </div>
-
-    </div>
+</div>
 
     <!-- Modal untuk detail history -->
     <div id="detailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
@@ -810,6 +830,23 @@ $end_item = min($offset + $limit, $total_data);
     </div>
 
     <script>
+        // Searching di tabel Riwayat Diagnosa
+        document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchHistory');
+        const table = document.getElementById('historyTable');
+        if (!searchInput || !table) return;
+
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = table.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+        });
+        // Function to close the modal
     document.addEventListener('DOMContentLoaded', function() {
         // Reset form ketika halaman dimuat (setelah refresh/submit)
         const resetFormOnLoad = () => {
