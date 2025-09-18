@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_user'])) {
         $stmt = $pdo->prepare($insertQuery);
         $stmt->execute([$nama, $username, $password, $jk, $umur, $status, $tgl, $alamat]);
 
-        header("Location: ".$_SERVER['PHP_SELF']."?page=users&success=1");
+        header("Location: ".$_SERVER['PHP_SELF']."?page=guru&success=1");
         exit();
     } catch (PDOException $e) {
         $error = "Gagal menambahkan user: ".$e->getMessage();
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
             $update = $pdo->prepare("UPDATE users SET password=? WHERE id=? AND username='admin'");
             $update->execute([$hashed, $id]);
 
-            header("Location: ".$_SERVER['PHP_SELF']."?page=users&success=4");
+            header("Location: ".$_SERVER['PHP_SELF']."?page=guru&success=4");
             exit();
         }
     } catch (PDOException $e) {
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             $stmt->execute([$nama, $username, $jk, $umur, $status, $tgl, $alamat, $id]);
         }
 
-        header("Location: ".$_SERVER['PHP_SELF']."?page=users&success=2");
+        header("Location: ".$_SERVER['PHP_SELF']."?page=gurus&success=2");
         exit();
     } catch (PDOException $e) {
         $error = "Gagal mengupdate user: ".$e->getMessage();
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
         $stmt = $pdo->prepare($deleteQuery);
         $stmt->execute([$id]);
 
-        header("Location: ".$_SERVER['PHP_SELF']."?page=users&success=3");
+        header("Location: ".$_SERVER['PHP_SELF']."?page=guru&success=3");
         exit();
     } catch (PDOException $e) {
         $error = "Gagal menghapus user: ".$e->getMessage();
@@ -121,7 +121,7 @@ $stmt = $pdo->prepare($query);
 $stmt->execute();
 $user_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$baseUrl = "container.php?page=users";
+$baseUrl = "container.php?page=guru";
 
 function formatTanggal($tgl){ return date('d/m/Y', strtotime($tgl)); }
 ?>
